@@ -1,14 +1,17 @@
 from paho.mqtt import client as mqtt_client
 
+
 def _new_client(id):
     # paho-mqtt 2.x requires an explicit callback API version; 1.x has no such arg.
-    if hasattr(mqtt_client, 'CallbackAPIVersion'):
+    if hasattr(mqtt_client, "CallbackAPIVersion"):
         return mqtt_client.Client(mqtt_client.CallbackAPIVersion.VERSION1, id)
     return mqtt_client.Client(id)
+
 
 def connect(broker, port, id, user, passw, discovery=None, will_topic=None):
     """Connect to the broker. If `discovery` is given, its on_connect/on_message
     hooks run on every (re)connect / incoming message."""
+
     def on_connect(client, userdata, flags, rc):
         if rc == 0:
             print("Connected to MQTT Broker!")
@@ -25,7 +28,7 @@ def connect(broker, port, id, user, passw, discovery=None, will_topic=None):
     if user:
         mqtt.username_pw_set(user, passw)
     if will_topic:
-        mqtt.will_set(will_topic, 'offline', qos=1, retain=True)
+        mqtt.will_set(will_topic, "offline", qos=1, retain=True)
     mqtt.on_connect = on_connect
     mqtt.on_message = on_message
     mqtt.connect(broker, port)

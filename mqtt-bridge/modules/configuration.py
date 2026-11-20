@@ -1,8 +1,9 @@
 import configparser
 
-CFG_NAME = 'config.ini'
+CFG_NAME = "config.ini"
 
 config_file = configparser.ConfigParser()
+
 
 def read():
     config = configparser.ConfigParser()
