@@ -14,7 +14,13 @@ This has only been tested recieving the following data from a Eddi V2.1 unit. Ot
 
 
 ## Setup
-Your python installation needs paho.mqtt installed
+Dependencies are managed with [uv](https://docs.astral.sh/uv/). From the repository root:
+
+```sh
+uv sync
+```
+
+This creates `.venv` with paho-mqtt (and ruff for development).
 
 in file config.ini, you need to set
 * your broker IP and port
@@ -26,7 +32,19 @@ in file config.ini, you need to set
 
 > {topic}/{serialnumber}/{data}
 
-You also need to set the name of the NIC that you are using to allow it to be bound and set to promisc mode. The script needs to be run with root permissions for the moment as it manipulates the NIC to set it to promiscuous mode. 
+You also need to set the name of the NIC that you are using to allow it to be bound and set to promisc mode. The script needs to be run with root permissions for the moment as it manipulates the NIC to set it to promiscuous mode. It reads `config.ini` from the current directory, so run it from `mqtt-bridge/`:
+
+```sh
+cd mqtt-bridge
+sudo ../.venv/bin/python mqtt-energi.py
+```
+
+## Development
+Format the code with ruff:
+
+```sh
+uv run ruff format .
+```
 
 ## Home Assistant
 The bridge supports [MQTT discovery](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery). Enable it in config.ini:
