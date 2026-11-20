@@ -1,0 +1,18 @@
+services:
+  mqtt-energi:
+    build: .
+    restart: unless-stopped
+    # Needs the host's NIC to see myenergi frames and set promiscuous mode
+    network_mode: host
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    environment:
+      NETWORK_NIC: eth0
+      MQTT_BROKER: 192.0.2.10
+      MQTT_PORT: "1883"
+      MQTT_TOPIC: myenergi
+      MQTT_ID: Myenergi-Bridge-1
+      MQTT_USER: ""
+      MQTT_PASS: ""
+      HOMEASSISTANT_ENABLED: "true"

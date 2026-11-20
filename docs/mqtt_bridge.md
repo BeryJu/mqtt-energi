@@ -41,6 +41,19 @@ sudo .venv/bin/python mqtt-bridge/mqtt-energi.py
 ### Configuration via environment
 Every option can also be set with an environment variable named `<SECTION>_<OPTION>`, which overrides `config.ini`. For example `NETWORK_NIC`, `MQTT_BROKER`, `MQTT_PORT`, `MQTT_TOPIC`, `MQTT_ID`, `MQTT_USER`, `MQTT_PASS`, `DEBUG_ENABLED`, `HOMEASSISTANT_ENABLED`, `HOMEASSISTANT_DISCOVERY_PREFIX`.
 
+## Docker
+The container needs the host's network (to see the myenergi frames) plus the `NET_RAW` and `NET_ADMIN` capabilities (raw socket and promiscuous mode). See `compose.yaml` for a full example:
+
+```sh
+docker build -t mqtt-energi .
+docker run -d --name mqtt-energi --restart unless-stopped \
+  --network host --cap-add NET_RAW --cap-add NET_ADMIN \
+  -e NETWORK_NIC=eth0 -e MQTT_BROKER=192.0.2.10 -e HOMEASSISTANT_ENABLED=true \
+  mqtt-energi
+```
+
+`config.ini` is not copied into the image; mount one at `/app/mqtt-bridge/config.ini` if you prefer a file. On `docker stop` the bridge takes the NIC back out of promiscuous mode.
+
 ## Development
 Format the code with ruff:
 

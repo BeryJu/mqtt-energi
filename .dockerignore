@@ -1,0 +1,10 @@
+**/.venv
+**/env
+**/__pycache__
+**/*.pyc
+.git
+.ruff_cache
+docs
+# Local settings: configure the container via environment or a mounted file
+mqtt-bridge/config.ini
+mqtt-bridge/mosquitto
