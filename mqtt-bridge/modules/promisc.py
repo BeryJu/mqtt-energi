@@ -14,10 +14,10 @@ class ifreq(ctypes.Structure):
 def set(nic, state):
     ifr = ifreq()
     ifr.ifr_ifrn = str.encode(nic)
-    s = socket(AF_NETLINK, SOCK_DGRAM)
-    fcntl.ioctl(s.fileno(), SIOCGIFFLAGS, ifr)  # G for Get
-    if state:
-        ifr.ifr_flags |= IFF_PROMISC
-    else:
-        ifr.ifr_flags &= ~IFF_PROMISC
-    fcntl.ioctl(s.fileno(), SIOCSIFFLAGS, ifr)  # S for Set
+    with socket(AF_NETLINK, SOCK_DGRAM) as s:
+        fcntl.ioctl(s.fileno(), SIOCGIFFLAGS, ifr)  # G for Get
+        if state:
+            ifr.ifr_flags |= IFF_PROMISC
+        else:
+            ifr.ifr_flags &= ~IFF_PROMISC
+        fcntl.ioctl(s.fileno(), SIOCSIFFLAGS, ifr)  # S for Set
