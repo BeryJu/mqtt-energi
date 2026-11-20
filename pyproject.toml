@@ -5,7 +5,7 @@ description = "Bridge myenergi device-to-device packets to MQTT"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "paho-mqtt==1.6.1",
+    "paho-mqtt>=2,<3",
 ]
 
 [dependency-groups]
