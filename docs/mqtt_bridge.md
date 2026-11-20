@@ -32,11 +32,10 @@ in file config.ini, you need to set
 
 > {topic}/{serialnumber}/{data}
 
-You also need to set the name of the NIC that you are using to allow it to be bound and set to promisc mode. The script needs to be run with root permissions for the moment as it manipulates the NIC to set it to promiscuous mode. It reads `config.ini` from the current directory, so run it from `mqtt-bridge/`:
+You also need to set the name of the NIC that you are using to allow it to be bound and set to promisc mode. The script needs to be run with root permissions for the moment as it manipulates the NIC to set it to promiscuous mode. From the repository root:
 
 ```sh
-cd mqtt-bridge
-sudo ../.venv/bin/python mqtt-energi.py
+sudo .venv/bin/python mqtt-bridge/mqtt-energi.py
 ```
 
 ## Development
