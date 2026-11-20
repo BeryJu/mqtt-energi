@@ -122,13 +122,13 @@ def decode_packet(eth_pkt,debug):
         if debug:
             data = {
                 'serial':serialno,
-                '0x27/v1':v1,
-                '0x27/v2':v2,
-                '0x27/v3':v3,
-                '0x27/v4':v4,
-                '0x27/V5':v5,
-                '0x27/v6':v6,
-                '0x27/v7':v7
+                '0x37/v1':v1,
+                '0x37/v2':v2,
+                '0x37/v3':v3,
+                '0x37/v4':v4,
+                '0x37/V5':v5,
+                '0x37/v6':v6,
+                '0x37/v7':v7
             }
 
     elif packet_type == 0x36: # ?
