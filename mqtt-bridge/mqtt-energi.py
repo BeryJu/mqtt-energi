@@ -6,6 +6,7 @@ from modules import promisc
 from modules.packet_decoder import decode_packet
 from modules import mqtt_handler
 from modules import configuration
+from modules import ha_discovery
 
 import atexit
 
@@ -18,7 +19,21 @@ def exit_handler():
 atexit.register(exit_handler)
 
 def main():
-    mqtt = mqtt_handler.connect(settings['MQTT']['BROKER'], int(settings['MQTT']['PORT']),settings['MQTT']['ID'],settings['MQTT']['User'],settings['MQTT']['pass'])
+    base_topic = settings['MQTT']['TOPIC']
+    discovery = None
+    if settings.getboolean('HOMEASSISTANT', 'Enabled', fallback=False):
+        # Discovery needs the client, the client needs discovery's callbacks:
+        # create it first, attach the client right after connecting.
+        discovery = ha_discovery.Discovery(
+            None, base_topic,
+            prefix=settings.get('HOMEASSISTANT', 'Discovery_Prefix', fallback='homeassistant'),
+            model=settings.get('HOMEASSISTANT', 'Model', fallback='Eddi'),
+            expire_after=settings.getint('HOMEASSISTANT', 'Expire_After', fallback=120))
+    mqtt = mqtt_handler.connect(settings['MQTT']['BROKER'], int(settings['MQTT']['PORT']),settings['MQTT']['ID'],settings['MQTT']['User'],settings['MQTT']['pass'],
+                                discovery=discovery,
+                                will_topic=discovery.availability_topic if discovery else None)
+    if discovery:
+        discovery.mqtt = mqtt
     mqtt.loop_start()
     debug = settings.getboolean('DEBUG','Enabled')
     print(f'Debug: {debug}')
@@ -40,8 +55,10 @@ def main():
                             data = decode_packet(payload, debug)
                             if data:
                                 print(data)
+                                if discovery:
+                                    discovery.announce(data['serial'], data.keys())
                             for key in data:
-                                mqtt.publish(settings['MQTT']['TOPIC']+"/"+str(data['serial'])+"/"+key, data[key])
+                                mqtt.publish(base_topic+"/"+str(data['serial'])+"/"+key, data[key])
 
 
         
