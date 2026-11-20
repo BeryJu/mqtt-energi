@@ -38,6 +38,9 @@ You also need to set the name of the NIC that you are using to allow it to be bo
 sudo .venv/bin/python mqtt-bridge/mqtt-energi.py
 ```
 
+### Configuration via environment
+Every option can also be set with an environment variable named `<SECTION>_<OPTION>`, which overrides `config.ini`. For example `NETWORK_NIC`, `MQTT_BROKER`, `MQTT_PORT`, `MQTT_TOPIC`, `MQTT_ID`, `MQTT_USER`, `MQTT_PASS`, `DEBUG_ENABLED`, `HOMEASSISTANT_ENABLED`, `HOMEASSISTANT_DISCOVERY_PREFIX`.
+
 ## Development
 Format the code with ruff:
 

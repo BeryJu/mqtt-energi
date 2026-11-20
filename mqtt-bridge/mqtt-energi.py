@@ -9,8 +9,13 @@ from modules import configuration
 from modules import ha_discovery
 
 import atexit
+import signal
+import sys
 
 settings = configuration.read()
+
+# Turn SIGTERM (e.g. `docker stop`) into a normal exit so atexit handlers run.
+signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
 
 
 def exit_handler():
