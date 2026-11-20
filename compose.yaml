@@ -1,6 +1,7 @@
 services:
   mqtt-energi:
-    build: .
+    image: ghcr.io/beryju/mqtt-energi:latest
+    # To build locally instead, replace the line above with: build: .
     restart: unless-stopped
     # Needs the host's NIC to see myenergi frames and set promiscuous mode
     network_mode: host

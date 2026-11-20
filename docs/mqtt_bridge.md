@@ -42,17 +42,26 @@ sudo .venv/bin/python mqtt-bridge/mqtt-energi.py
 Every option can also be set with an environment variable named `<SECTION>_<OPTION>`, which overrides `config.ini`. For example `NETWORK_NIC`, `MQTT_BROKER`, `MQTT_PORT`, `MQTT_TOPIC`, `MQTT_ID`, `MQTT_USER`, `MQTT_PASS`, `DEBUG_ENABLED`, `HOMEASSISTANT_ENABLED`, `HOMEASSISTANT_DISCOVERY_PREFIX`.
 
 ## Docker
-The container needs the host's network (to see the myenergi frames) plus the `NET_RAW` and `NET_ADMIN` capabilities (raw socket and promiscuous mode). See `compose.yaml` for a full example:
+A container image is built by CI for `linux/amd64` and `linux/arm64` and published to `ghcr.io/beryju/mqtt-energi`. Use `latest` (the main branch), a release version like `1.2.3`, or a specific commit's `sha-<commit>` tag.
+
+The container needs the host's network (to see the myenergi frames) plus the `NET_RAW` and `NET_ADMIN` capabilities (raw socket and promiscuous mode):
 
 ```sh
-docker build -t mqtt-energi .
 docker run -d --name mqtt-energi --restart unless-stopped \
   --network host --cap-add NET_RAW --cap-add NET_ADMIN \
   -e NETWORK_NIC=eth0 -e MQTT_BROKER=192.0.2.10 -e HOMEASSISTANT_ENABLED=true \
-  mqtt-energi
+  ghcr.io/beryju/mqtt-energi:latest
+```
+
+Or with Docker Compose, using the example `compose.yaml` in the repository root:
+
+```sh
+docker compose up -d
 ```
 
 `config.ini` is not copied into the image; mount one at `/app/mqtt-bridge/config.ini` if you prefer a file. On `docker stop` the bridge takes the NIC back out of promiscuous mode.
+
+To build the image yourself instead, run `docker build -t mqtt-energi .` from the repository root.
 
 ## Development
 Format the code with ruff:
