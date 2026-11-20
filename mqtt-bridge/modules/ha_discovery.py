@@ -12,6 +12,7 @@ See https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
 """
 
 import json
+import threading
 
 # Decoded data keys that Home Assistant should know about. Keys not listed here
 # (e.g. the raw 0x36/v1 debug fields) are still published, just not announced.
@@ -96,6 +97,8 @@ class Discovery:
         self.availability_topic = f"{base_topic}/bridge/status"
         self.status_topic = f"{prefix}/status"  # Home Assistant birth/will
         self._announced = {}  # serial -> set of keys already announced
+        # announce() runs on the capture loop, reannounce() on the MQTT thread
+        self._lock = threading.RLock()
 
     def _config(self, serial, key, spec):
         uid = f"myenergi_{serial}_{key}"
@@ -126,23 +129,30 @@ class Discovery:
 
     def announce(self, serial, keys):
         """Publish discovery configs for any keys of `serial` not yet announced."""
-        done = self._announced.setdefault(serial, set())
-        for key in keys:
-            spec = ENTITIES.get(key)
-            if spec is None or key in done:
-                continue
-            topic = f"{self.prefix}/{spec['component']}/myenergi_{serial}/{key}/config"
-            self.mqtt.publish(
-                topic, json.dumps(self._config(serial, key, spec)), qos=1, retain=True
-            )
-            done.add(key)
+        with self._lock:
+            done = self._announced.setdefault(serial, set())
+            for key in keys:
+                spec = ENTITIES.get(key)
+                if spec is None or key in done:
+                    continue
+                topic = (
+                    f"{self.prefix}/{spec['component']}/myenergi_{serial}/{key}/config"
+                )
+                self.mqtt.publish(
+                    topic,
+                    json.dumps(self._config(serial, key, spec)),
+                    qos=1,
+                    retain=True,
+                )
+                done.add(key)
 
     def reannounce(self):
         """Re-send all configs, e.g. after Home Assistant restarts."""
-        known = {s: set(k) for s, k in self._announced.items()}
-        self._announced.clear()
-        for serial, keys in known.items():
-            self.announce(serial, keys)
+        with self._lock:
+            known = {s: set(k) for s, k in self._announced.items()}
+            self._announced.clear()
+            for serial, keys in known.items():
+                self.announce(serial, keys)
 
     def on_connect(self):
         self.mqtt.publish(self.availability_topic, "online", qos=1, retain=True)
