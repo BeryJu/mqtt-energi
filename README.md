@@ -1,39 +1,37 @@
-**!! Note - Unknown if this works with V5 firmware. I am not updating at the moment due to the many issues reported. !!**
-
 # mqtt-energi
-Protocol documentation myenergi device to device communications and mqtt bridge for local data access
 
-## Introduction
-This repository is meant to document reverse engineering attempts on the device-to-device communications used between myenergi devices for the purposes of intercepting them and posting the data to a local MQTT server. 
+Local MQTT bridge for myenergi devices, plus notes on their device-to-device protocol. Not affiliated with myenergi; use at your own risk.
 
-## Disclaimer
-This is a hobby project that is not affiliated with MyEnergi ltd in any way. Use at your own risk. All company and product names are copyright of their respective owners.
+Fork of [PeterTM/mqtt-energi](https://github.com/PeterTM/mqtt-energi). Most of the protocol research and the original bridge come from there; this fork adds Home Assistant discovery, a container image and some further decoding.
 
-## Current Capabilities
-The MQTT Bridge can currently extract the following information from A V2.1 Eddi. It might be able to recieve packets from other myenergi devices, but cant do anything with them as it wont understand the format of the data. 
+An Eddi V2.1 copies the radio packets it sends to Wi-Fi as raw Ethernet frames. The bridge sniffs those on the LAN, decodes them and publishes to MQTT, with Home Assistant discovery. Tested with an Eddi V2.1 on firmware V5.435. V1 devices without network access won't work.
 
-* Serial Number
-* Supply Voltage
-* Supply Frequency
-* Grid Power
-* Grid Power (1 minute average, from history records)
-* Heatsink Temperature
-* Heater Max Power
-* Firmware Version
-* Generation Power
-* Diverting Power
-* Total Diverted Energy per day. 
-* Active heater channel
-* Boost State
+## Quick start
 
-V1 devices (without an ethernet port or wifi) wont work at all as this relies on intercepting the device to device communications that happen over the network. 
+```sh
+docker run -d --name mqtt-energi --restart unless-stopped \
+  --network host --cap-add NET_RAW --cap-add NET_ADMIN \
+  -e NETWORK_NIC=eth0 -e MQTT_BROKER=192.0.2.10 -e HOMEASSISTANT_ENABLED=true \
+  ghcr.io/beryju/mqtt-energi:latest
+```
 
-## Index
-* [Communication Overview]
-* [Data Packets Format]
-* [MQTT Bridge]
+Setup, configuration and Home Assistant details: [MQTT Bridge](docs/mqtt_bridge.md).
 
+## Data
 
-[Data Packets Format]: docs/data_packets.md
-[MQTT Bridge]: docs/mqtt_bridge.md
-[Communication Overview]: docs/communication.md
+* Heater power, live and 1 minute average (W)
+* Heater energy (kWh, includes boost)
+* Diverted energy today (kWh, surplus diversion only)
+* Heater max power (W)
+* Boost, stopped and selected heater
+* Grid power, 1 minute average (W)
+* Supply voltage and frequency
+* Heatsink temperature
+* Serial number and firmware version
+* Live grid and generation power, only from devices that send CT packets
+
+## Docs
+
+* [Communication overview](docs/communication.md)
+* [Packet format](docs/data_packets.md)
+* [MQTT bridge](docs/mqtt_bridge.md)
