@@ -53,6 +53,20 @@ ENTITIES = {
         "unit_of_measurement": "W",
         "state_class": "measurement",
     },
+    "heater_max_pwr_w": {
+        # V^2 / element resistance: what the heater draws at full output
+        "component": "sensor",
+        "name": "Heater max power",
+        "device_class": "power",
+        "unit_of_measurement": "W",
+        "state_class": "measurement",
+    },
+    "firmware": {
+        "component": "sensor",
+        "name": "Firmware",
+        "icon": "mdi:chip",
+        "entity_category": "diagnostic",
+    },
     "grid_pwr_1m_w": {
         # From the per-minute 0x36 records, so updates about once a minute.
         "component": "sensor",

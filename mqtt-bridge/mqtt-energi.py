@@ -144,7 +144,7 @@ def main():
                     logger.info(
                         "new sender",
                         mac=_mac(source),
-                        device_id=f"0x{payload[0x19]:02X}",
+                        network_id=payload[0x19],
                     )
                 try:
                     data = decode_packet(payload, debug)

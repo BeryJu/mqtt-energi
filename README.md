@@ -18,6 +18,8 @@ The MQTT Bridge can currently extract the following information from A V2.1 Eddi
 * Grid Power
 * Grid Power (1 minute average, from history records)
 * Heatsink Temperature
+* Heater Max Power
+* Firmware Version
 * Generation Power
 * Diverting Power
 * Total Diverted Energy per day. 

@@ -67,7 +67,8 @@ def decode_packet(eth_pkt, debug):
         div_wh = int.from_bytes(eth_pkt[0x2C:0x2E], "little")
         divert_pwr = int.from_bytes(eth_pkt[0x34:0x36], "little")
         divert_cur = int.from_bytes(eth_pkt[0x36:0x38], "little")  # not sure about this
-        max_power = int.from_bytes(eth_pkt[0x26:0x28], "little")  # not sure about this
+        # Power the heater would draw at full output (V^2 / element resistance)
+        max_power = int.from_bytes(eth_pkt[0x26:0x28], "little")
         status = status_decode(int(eth_pkt[0x2F]))
         status2 = status_decode(int(eth_pkt[0x25]))
         status3 = status_decode(int(eth_pkt[0x2E]))
@@ -85,7 +86,7 @@ def decode_packet(eth_pkt, debug):
             "heater2": heater2,
             "stopped": stopped,
             "boost": boost,
-            #'max_power':max_power
+            "heater_max_pwr_w": max_power,
         }
     elif packet_type == 0x2B:  # Data ?
         serialno = int.from_bytes(eth_pkt[0x1E:0x22], "little")
@@ -160,28 +161,21 @@ def decode_packet(eth_pkt, debug):
                 "0x27/v7": v7,
             }
 
-    elif packet_type == 0x37:  # Divert Power
+    elif packet_type == 0x37:  # Device info (constant)
         serialno = int.from_bytes(eth_pkt[0x1E:0x22], "little")
-        v1 = int.from_bytes(
-            eth_pkt[0x4D:0x4F], "little", signed=True
-        )  # diverter power?
-        v2 = int.from_bytes(eth_pkt[0x3C:0x3D], "little", signed=True)
-        v3 = int.from_bytes(eth_pkt[0x3A:0x3C], "little", signed=True)
-        v4 = int.from_bytes(eth_pkt[0x34:0x36], "little", signed=True)
-        v5 = int.from_bytes(eth_pkt[0x32:0x34], "little", signed=True)
-        v6 = int.from_bytes(eth_pkt[0x30:0x32], "little", signed=True)
-        v7 = int.from_bytes(eth_pkt[0x2E:0x30], "little", signed=True)
+        firmware = int.from_bytes(eth_pkt[0x42:0x44], "little")  # 5435 = V5.435
+        data = {
+            "serial": serialno,
+            "firmware": f"{firmware // 1000}.{firmware % 1000:03d}",
+        }
         if debug:
-            data = {
-                "serial": serialno,
-                "0x37/v1": v1,
-                "0x37/v2": v2,
-                "0x37/v3": v3,
-                "0x37/v4": v4,
-                "0x37/V5": v5,
-                "0x37/v6": v6,
-                "0x37/v7": v7,
-            }
+            # 1303 for melib v4.1.303
+            data["0x37/melib"] = int.from_bytes(eth_pkt[0x46:0x48], "little")
+            data["0x37/id"] = eth_pkt[0x30:0x36].hex()
+            for off in (0x3C, 0x3E, 0x40, 0x44, 0x48):  # constant, unknown
+                data[f"0x37/raw_{off:02x}"] = int.from_bytes(
+                    eth_pkt[off : off + 2], "little"
+                )
 
     elif packet_type == 0x36:  # Per-minute history record
         # The Eddi keeps sending its stored one-minute records (about a week of

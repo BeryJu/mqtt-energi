@@ -13,9 +13,25 @@ All packets start with a 30 byte long header formatted as below
 |      0x14     |       1      | Unknown            | 0x01                |
 |      0x15     |       3      | Unknown (Padding)  | 0x00                |
 |      0x18     |       1      | Message Length     | Various (See Below) |
-|      0x19     |       1      | Device / Sender ID? | 0x53, 0xA9 (Eddi V2.1) and 0xE5 (Zappi) seen |
+|      0x19     |       1      | Network ID         | Shown on the device as Information 3/6 "Network ID" (e.g. 169 = 0xA9); 0x53 and 0xE5 seen on other networks |
 |      0x1A     |       2      | Message Type  1  ? |                     |
 |      0x1B     |       2      | Message Type  2  ? |                     |
+
+## Where the frames come from
+myenergi devices talk to each other over an 868 MHz radio link. An Eddi V2.1 also copies every radio packet it **transmits** out over Wi-Fi as these raw frames (its "Packet Counters" screen shows Radio Tx and WiFi Tx counting in step, at about 1.4 packets per second). Packets it **receives** by radio are not copied. So with an Eddi alone on the network you only see the Eddi's own data: for example, when the grid CT is wired to a Zappi ("Grid Sensor: Remote"), the live grid readings stay on the radio link and no `0x22` CT packets appear.
+
+## Common fields
+These fields sit at the same offsets in every packet type observed from an Eddi V2.1 except `0x36`:
+
+| Start Address | Size (Bytes) | Data Type | Description | Post Processing |
+|---------------|--------------|-----------|-------------|-----------------|
+|      0x1E     |       4      |  uint32   | Serial Number | N/A |
+|      0x22     |       2      |  uint16   | Frequency | / 100 |
+|      0x25     |       1      |  bits     | Status (bit 7: stopped) | |
+|      0x26     |       2      |  uint16   | Heater max power (W): what the heater draws at full output, tracks V² / element resistance (correlation 0.999; matches "MaxPower" on the Eddi's diagnostic screens) | N/A |
+|      0x2C     |       2      |  uint16   | Diverted energy today (kWh) | / 100 |
+|      0x2E     |       1      |  bits     | Status (bit 4: boost) | |
+|      0x2F     |       1      |  bits     | Selected heater (bit 0: heater 1, bit 1: heater 2) | |
 
 Various Types of packets have been observed so far. 
 ## Packet Types
@@ -140,10 +156,16 @@ Values confirmed against the Eddi's readings screens on an Eddi V2.1.
 
 The record time is the Eddi's local time (as set on the device). The minimum/maximum voltage and grid current shown on the Eddi's readings screens were not found in any packet.
 
-### 0x37 - Unknown
+### 0x37 - Device information
 
+Constant apart from the common fields.
 
 | Start Address | Size (Bytes) | Data Type | Description                                             | Post Processing |
 |---------------|--------------|-----------|---------------------------------------------------------|-----------------|
 |      0x1E     |       4      |   int32   | Serial Number                                           | N/A             |
-
+|      0x30     |       6      |           | Unknown identifier (not the Eddi's MAC or EUI)          |                 |
+|      0x3C     |       6      |  uint16   | Unknown constants (1244, 1036, 1444 at 0x3C/0x3E/0x40) |                 |
+|      0x42     |       2      |  uint16   | Firmware version (5435 = V5.435)                        | major = v / 1000, minor = v % 1000 |
+|      0x44     |       2      |  uint16   | Unknown constant (3202)                                 |                 |
+|      0x46     |       2      |  uint16   | melib version (1303 for v4.1.303)                       |                 |
+|      0x48     |       2      |  uint16   | Unknown constant (228)                                  |                 |
