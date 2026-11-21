@@ -5,7 +5,7 @@ import collections
 import time
 from modules import constants
 from modules import promisc
-from modules.packet_decoder import decode_packet
+from modules.packet_decoder import decode_packet, device_model
 from modules import mqtt_handler
 from modules import configuration
 from modules import ha_discovery
@@ -145,6 +145,7 @@ def main():
                         "new sender",
                         mac=_mac(source),
                         network_id=payload[0x19],
+                        device=device_model(payload) or f"0x{payload[0x1C]:02X}",
                     )
                 try:
                     data = decode_packet(payload, debug)
@@ -165,7 +166,9 @@ def main():
                     **data,
                 )
                 if discovery:
-                    discovery.announce(data["serial"], data.keys())
+                    discovery.announce(
+                        data["serial"], data.keys(), device_model(payload)
+                    )
                 for key in data:
                     result = mqtt.publish(
                         base_topic + "/" + str(data["serial"]) + "/" + key,

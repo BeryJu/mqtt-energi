@@ -16,12 +16,15 @@ All packets start with a 30 byte long header formatted as below
 |      0x19     |       1      | Network ID         | Shown on the device as Information 3/6 "Network ID" (e.g. 169 = 0xA9); 0x53 and 0xE5 seen on other networks |
 |      0x1A     |       2      | Message Type  1  ? |                     |
 |      0x1B     |       2      | Message Type  2  ? |                     |
+|      0x1C     |       1      | Device type        | 0xC8 = Eddi, 0xD0 = Zappi. Frames of the same packet type are laid out differently per device. 0x81 is seen with serial "Zappi + 1" (e.g. 20713857), not yet identified |
 
 ## Where the frames come from
 myenergi devices talk to each other over an 868 MHz radio link. An Eddi V2.1 also copies every radio packet it **transmits** out over Wi-Fi as these raw frames (its "Packet Counters" screen shows Radio Tx and WiFi Tx counting in step, at about 1.4 packets per second). Packets it **receives** by radio are not copied. So with an Eddi alone on the network you only see the Eddi's own data: for example, when the grid CT is wired to a Zappi ("Grid Sensor: Remote"), the live grid readings stay on the radio link and no `0x22` CT packets appear.
 
+Once the Zappi is on Wi-Fi it sends its own frames to the same multicast group, from its own MAC. These include the grid CT readings (`0x2A`, below). The Zappi's "MElink Packets" WiFi Tx counter matched the number of frames captured from it.
+
 ## Common fields
-These fields sit at the same offsets in every packet type observed from an Eddi V2.1 except `0x36`:
+These fields sit at the same offsets in every packet type observed from an Eddi V2.1 except `0x36` (on a Zappi only the serial and frequency are known to match, plus voltage at 0x32 in `0x1F`):
 
 | Start Address | Size (Bytes) | Data Type | Description | Post Processing |
 |---------------|--------------|-----------|-------------|-----------------|
@@ -44,6 +47,7 @@ Various Types of packets have been observed so far.
 |     0x2C    |          68         | ??                              |            12           |                              |
 |     0x2D    |          69         | ??                              |            12           |                              |
 |     0x22    |          58         | CT Readings?                    |            2            |                              |
+|     0x2A    |          66         | Zappi CT readings               |            1            | Zappi only                   |
 |     0x27    |          63         | Unknown                         |            4            |                              |
 |     0x36    |          78         | Per-minute history record       |            2            | replays ~a week of records   |
 |     0x37    |          79         | Unknown                         |            tbc          |                              |
@@ -115,6 +119,24 @@ Transmitted Approx ever 2 seconds
 |      0x32     | 2            |   int16   | Diverting Power  | N/A             |
 |      0x2E     | 4            |   int32   | Serial Number    | N/A             |
 
+
+### 0x2A - Zappi CT readings
+
+Sent by a Zappi about once a second: the CT readings it sends the Eddi over the radio so the Eddi can divert. The same fields as `0x22`, but 32 bits wide and with the serial one byte later. Checked against the Zappi's "Importing" screen (it lags the frames by about a second).
+
+| Start Address | Size (Bytes) | Data Type | Description | Post Processing |
+|---------------|--------------|-----------|-------------|-----------------|
+|      0x1E     |       4      |   int32   | Grid power (W), positive = import | N/A |
+|      0x22     |       4      |   int32   | Generation power (W)? 0 here, no generation CT fitted | N/A |
+|      0x26     |       4      |   int32   | Unknown, noisy | |
+|      0x2D     |       4      |  uint32   | Eddi serial number | N/A |
+|      0x31     |       2      |   int16   | Eddi power as seen by the Zappi (W), tracks the Eddi's own `0x20` divert power | N/A |
+|      0x34     |       4      |  uint32   | Zappi serial number | N/A |
+|      0x3B     |       4      |  uint32   | Zappi serial + 1 | N/A |
+
+### 0x3E - Zappi per-minute history record (partial)
+
+Like the Eddi's `0x36`: starts with `5A 5A`, has 60 at 0x26 (seconds in the record), and the Zappi replays its stored records the same way (on first connect, records from six days earlier, one every 2 seconds). The date at 0x21-0x24 matches the Eddi's encoding; the minute is in the low 6 bits of 0x20 and the month in the low 4 bits of 0x23. Seen so far: 0x38/0x3A probably export/import (W), 0x3C/0x3E/0x40 voltage of phases 1-3 (/ 10), 0x42 frequency (/ 100), 0x44 unit temperature (/ 10, matches the Zappi's "Unit Temp"), serial at 0x52. Not decoded by the bridge yet.
 
 ### 0x27 - Unknown
 

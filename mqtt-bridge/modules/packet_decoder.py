@@ -13,6 +13,13 @@ _unknown_types = set()
 # bridge started. Published as a total_increasing counter: Home Assistant treats
 # the drop to 0 after a restart as a new cycle, so nothing is lost or doubled.
 _heater_energy = {}
+# Devices on one network are told apart by header byte 0x1C. Frames of the same
+# packet type are laid out differently on each, so only decode what is known.
+EDDI = 0xC8
+ZAPPI = 0xD0
+DEVICE_MODELS = {EDDI: "Eddi", ZAPPI: "Zappi"}
+# Device bytes without a decoder, so each is only logged once
+_unknown_devices = set()
 # Replayed records are never newer than the current one. After this many 0x36
 # frames (about a minute) the newest record seen is the live one.
 HISTORY_WARMUP_FRAMES = 30
@@ -49,9 +56,72 @@ def status_decode(inbyte):
     return [1 if inbyte & (1 << (7 - n)) else 0 for n in range(8)]
 
 
-def decode_packet(eth_pkt, debug):
-    packet_len = len(eth_pkt)
+def device_model(eth_pkt):
+    """Model name of the sending device ("Eddi", "Zappi"), or None if unknown."""
+    return DEVICE_MODELS.get(eth_pkt[0x1C])
+
+
+def _log_unknown_type(eth_pkt):
     packet_type = eth_pkt[0x18]
+    if (eth_pkt[0x1C], packet_type) not in _unknown_types:
+        _unknown_types.add((eth_pkt[0x1C], packet_type))
+        logger.info(
+            "unknown packet type (logged once per type)",
+            device=f"0x{eth_pkt[0x1C]:02X}",
+            packet_type=f"0x{packet_type:02X}",
+            length=len(eth_pkt),
+            payload=eth_pkt.hex(),
+        )
+
+
+def decode_zappi(eth_pkt, debug):
+    packet_type = eth_pkt[0x18]
+    data = {}
+    if packet_type == 0x1F:  # Same voltage/frequency fields as the Eddi's
+        data = {
+            "serial": int.from_bytes(eth_pkt[0x1E:0x22], "little"),
+            "frequency": int.from_bytes(eth_pkt[0x22:0x24], "little") / 100,
+            "voltage": int.from_bytes(eth_pkt[0x32:0x34], "little") / 10,
+        }
+    elif packet_type == 0x2A:  # CT readings, about once a second
+        # The grid CT reading the Zappi sends to the Eddi so it can divert. Laid out
+        # like 0x22, but with 32-bit values and the serial one byte later.
+        grid_pwr = int.from_bytes(eth_pkt[0x1E:0x22], "little", signed=True)
+        data = {
+            "serial": int.from_bytes(eth_pkt[0x34:0x38], "little"),
+            "grid_pwr_w": grid_pwr,
+        }
+        if debug:
+            # Generation CT (none fitted here, always 0) and the Eddi's power
+            # as the Zappi sees it
+            data["0x2A/gen_pwr_w"] = int.from_bytes(
+                eth_pkt[0x22:0x26], "little", signed=True
+            )
+            data["0x2A/eddi_serial"] = int.from_bytes(eth_pkt[0x2D:0x31], "little")
+            data["0x2A/eddi_pwr_w"] = int.from_bytes(
+                eth_pkt[0x31:0x33], "little", signed=True
+            )
+    else:
+        # Per-minute history (0x3E) and the rest are not mapped yet
+        _log_unknown_type(eth_pkt)
+    return data
+
+
+def decode_packet(eth_pkt, debug):
+    device = eth_pkt[0x1C]
+    packet_type = eth_pkt[0x18]
+    if device == ZAPPI:
+        return decode_zappi(eth_pkt, debug)
+    if device != EDDI and packet_type != 0x22:
+        if device not in _unknown_devices:
+            _unknown_devices.add(device)
+            logger.info(
+                "frames from an unknown device type are ignored (logged once)",
+                device=f"0x{device:02X}",
+                packet_type=f"0x{packet_type:02X}",
+                payload=eth_pkt.hex(),
+            )
+        return {}
     data = {}
 
     if packet_type == 0x1F:  # Frequency Message
@@ -300,12 +370,6 @@ def decode_packet(eth_pkt, debug):
                 "0x3A/v15": v15,
             }
 
-    elif packet_type not in _unknown_types:
-        _unknown_types.add(packet_type)
-        logger.info(
-            "unknown packet type (logged once per type)",
-            packet_type=f"0x{packet_type:02X}",
-            length=packet_len,
-            payload=eth_pkt.hex(),
-        )
+    else:
+        _log_unknown_type(eth_pkt)
     return data

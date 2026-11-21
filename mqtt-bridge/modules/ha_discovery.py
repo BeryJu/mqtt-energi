@@ -20,8 +20,10 @@ logger = log.get("discovery")
 
 # Decoded data keys that Home Assistant should know about. Keys not listed here
 # (e.g. the raw 0x36/v1 debug fields) are still published, just not announced.
+# "models" limits an entity to those devices (default: Eddi only).
 ENTITIES = {
     "voltage": {
+        "models": ("Eddi", "Zappi"),
         "component": "sensor",
         "name": "Supply voltage",
         "device_class": "voltage",
@@ -29,6 +31,7 @@ ENTITIES = {
         "state_class": "measurement",
     },
     "frequency": {
+        "models": ("Eddi", "Zappi"),
         "component": "sensor",
         "name": "Supply frequency",
         "device_class": "frequency",
@@ -103,6 +106,15 @@ ENTITIES = {
         "entity_category": "diagnostic",
         "expire_after": 300,
     },
+    "grid_pwr_w": {
+        # Live grid CT reading from the Zappi, about once a second
+        "models": ("Zappi",),
+        "component": "sensor",
+        "name": "Grid power",
+        "device_class": "power",
+        "unit_of_measurement": "W",
+        "state_class": "measurement",
+    },
     "grid_pwr": {
         "component": "sensor",
         "name": "Grid power",
@@ -141,6 +153,10 @@ ENTITIES = {
 }
 
 
+def _applies(spec, model):
+    return model in spec.get("models", ("Eddi",))
+
+
 class Discovery:
     def __init__(
         self, mqtt, base_topic, prefix="homeassistant", model="Eddi", expire_after=120
@@ -153,10 +169,16 @@ class Discovery:
         self.availability_topic = f"{base_topic}/bridge/status"
         self.status_topic = f"{prefix}/status"  # Home Assistant birth/will
         self._announced = {}  # serial -> set of keys already announced
+        self._models = {}  # serial -> model name
         # announce() runs on the capture loop, reannounce() on the MQTT thread
         self._lock = threading.RLock()
 
+    def _topic(self, serial, key, spec):
+        object_id = spec.get("id", key)
+        return f"{self.prefix}/{spec['component']}/myenergi_{serial}/{object_id}/config"
+
     def _config(self, serial, key, spec):
+        model = self._models.get(serial, self.model)
         uid = f"myenergi_{serial}_{spec.get('id', key)}"
         cfg = {
             "name": spec["name"],
@@ -166,9 +188,9 @@ class Discovery:
             "availability_topic": self.availability_topic,
             "device": {
                 "identifiers": [f"myenergi_{serial}"],
-                "name": f"{self.model} {serial}",
+                "name": f"{model} {serial}",
                 "manufacturer": "myenergi",
-                "model": self.model,
+                "model": model,
                 "serial_number": str(serial),
             },
             "origin": {"name": "mqtt-energi"},
@@ -190,17 +212,32 @@ class Discovery:
             cfg["expire_after"] = max(expire_after, self.expire_after)
         return cfg
 
-    def announce(self, serial, keys):
+    def _clear_foreign(self, serial, model):
+        """Remove retained configs of entities this device type does not have.
+
+        Older versions announced every device as an Eddi, so e.g. a Zappi could
+        show up with heater and boost entities.
+        """
+        for key, spec in ENTITIES.items():
+            if not _applies(spec, model):
+                self.mqtt.publish(
+                    self._topic(serial, key, spec), "", qos=1, retain=True
+                )
+
+    def announce(self, serial, keys, model=None):
         """Publish discovery configs for any keys of `serial` not yet announced."""
         with self._lock:
+            model = model or self._models.get(serial) or self.model
+            if serial not in self._models:
+                self._models[serial] = model
+                self._clear_foreign(serial, model)
             done = self._announced.setdefault(serial, set())
             announced = 0
             for key in keys:
                 spec = ENTITIES.get(key)
-                if spec is None or key in done:
+                if spec is None or key in done or not _applies(spec, model):
                     continue
-                object_id = spec.get("id", key)
-                topic = f"{self.prefix}/{spec['component']}/myenergi_{serial}/{object_id}/config"
+                topic = self._topic(serial, key, spec)
                 self.mqtt.publish(
                     topic,
                     json.dumps(self._config(serial, key, spec)),
@@ -212,7 +249,10 @@ class Discovery:
                 announced += 1
             if announced:
                 logger.info(
-                    "announced to Home Assistant", serial=serial, entities=announced
+                    "announced to Home Assistant",
+                    serial=serial,
+                    model=model,
+                    entities=announced,
                 )
 
     def reannounce(self):

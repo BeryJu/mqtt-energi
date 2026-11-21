@@ -4,9 +4,10 @@ This is a quick and dirty script that captures the packets matching the ethertyp
 ## Compatibility
 In its current form, this probably only works on linux based systems due to having to set the NIC mode to allow it to recieve all packets. Windows may work in the future if I get around to working out how. 
 
-This has only been tested recieving the following data from a Eddi V2.1 unit. Other capabilities may follow if the protocol is better understood
+This has only been tested recieving the following data from an Eddi V2.1 unit (and a Zappi V2.1 for grid power). Other capabilities may follow if the protocol is better understood
 * Current Supply Voltage / Frequency
 * Current Grid Power / Generation Power / Divert Power
+* Live Grid Power from a Zappi on the same network (with its grid CT), plus its supply voltage / frequency
 * Grid Import (1 minute average) and Heatsink Temperature
 * Heater Max Power and Firmware Version
 * Heater Power (1 minute average) and Heater Energy (kWh, includes boost; "Diverted energy today" does not)
@@ -103,7 +104,7 @@ model = Eddi                       ; shown as the device model
 expire_after = 120                 ; seconds without data before entities show unavailable (0 = never)
 ```
 
-The first time a serial number is seen, a retained config is published for each known value to `{discovery_prefix}/{sensor|binary_sensor}/myenergi_{serial}/{key}/config`. The entities show up under one device per serial. State values stay on the existing `{topic}/{serial}/{data}` topics.
+The first time a serial number is seen, a retained config is published for each known value to `{discovery_prefix}/{sensor|binary_sensor}/myenergi_{serial}/{key}/config`. The entities show up under one device per serial, as an Eddi or a Zappi depending on the sender. Entities an older version announced on the wrong device type (e.g. heater and boost entities on a Zappi) are removed. State values stay on the existing `{topic}/{serial}/{data}` topics.
 
 The bridge publishes `online` / `offline` (via MQTT last will) to `{topic}/bridge/status` and republishes all configs when Home Assistant comes back `online` on `{discovery_prefix}/status`.
 
