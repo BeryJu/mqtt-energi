@@ -24,11 +24,11 @@ Add `https://github.com/BeryJu/mqtt-energi` under *Settings → Add-ons → Add-
 ## Data
 
 * Heater power, live and 1 minute average (W)
-* Heater energy (kWh, includes boost)
+* Heater energy (kWh, diversion and boost)
 * Diverted energy today (kWh, surplus diversion only)
 * Heater max power (W)
 * Boost, stopped and selected heater
-* Grid power, 1 minute average (W)
+* Grid import, 1 minute average (W)
 * Supply voltage and frequency
 * Heatsink temperature
 * Serial number and firmware version

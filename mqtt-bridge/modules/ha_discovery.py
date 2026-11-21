@@ -77,7 +77,7 @@ ENTITIES = {
         "expire_after": 300,
     },
     "heater_kWh": {
-        # Includes boost, unlike diverted_kWh. Counts from 0 when the bridge
+        # Diverted and boost heating, unlike diverted_kWh. Counts from 0 when the bridge
         # starts; total_increasing treats that as a new cycle.
         "component": "sensor",
         "name": "Heater energy",
@@ -88,7 +88,7 @@ ENTITIES = {
     "grid_pwr_1m_w": {
         # From the per-minute 0x36 records, so updates about once a minute.
         "component": "sensor",
-        "name": "Grid power (1 min average)",
+        "name": "Grid import (1 min average)",
         "device_class": "power",
         "unit_of_measurement": "W",
         "state_class": "measurement",

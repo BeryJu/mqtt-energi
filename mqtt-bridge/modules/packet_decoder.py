@@ -188,22 +188,28 @@ def decode_packet(eth_pkt, debug):
         serialno = int.from_bytes(eth_pkt[0x4A:0x4E], "little")
         record_time = _history_time(eth_pkt)
         if record_time is not None and _history_is_new(serialno, record_time):
-            heater_pwr = int.from_bytes(eth_pkt[0x2C:0x2E], "little", signed=True)
-            grid_pwr = int.from_bytes(eth_pkt[0x36:0x38], "little", signed=True)
+            # The heater's power is logged by source: surplus solar diverted to
+            # it, and grid power during boost.
+            diverted_pwr = int.from_bytes(eth_pkt[0x28:0x2A], "little", signed=True)
+            boost_pwr = int.from_bytes(eth_pkt[0x2C:0x2E], "little", signed=True)
+            heater_pwr = max(diverted_pwr, 0) + max(boost_pwr, 0)
+            # Import and export are averaged separately (not one net value)
+            grid_import = int.from_bytes(eth_pkt[0x36:0x38], "little", signed=True)
+            grid_export = int.from_bytes(eth_pkt[0x34:0x36], "little", signed=True)
             voltage = int.from_bytes(eth_pkt[0x38:0x3A], "little")
             freq = int.from_bytes(eth_pkt[0x3A:0x3C], "little")
             heatsink = int.from_bytes(eth_pkt[0x3C:0x3E], "little", signed=True)
             # Seconds covered by the record (59 or 60)
             seconds = eth_pkt[0x26] if 0 < eth_pkt[0x26] <= 60 else 60
-            # Unlike diverted_kWh, this includes boost (grid-powered) heating
+            # Diverted and boost heating (diverted_kWh leaves out boost)
             energy = _heater_energy.get(serialno, 0.0)
-            energy += max(heater_pwr, 0) * seconds / 3_600_000
+            energy += heater_pwr * seconds / 3_600_000
             _heater_energy[serialno] = energy
             data = {
                 "serial": serialno,
                 "heater_pwr_1m_w": heater_pwr,
                 "heater_kWh": round(energy, 4),
-                "grid_pwr_1m_w": grid_pwr,
+                "grid_pwr_1m_w": grid_import,
                 "heatsink_temp_c": heatsink / 10,
             }
             if debug:
@@ -211,8 +217,12 @@ def decode_packet(eth_pkt, debug):
                 data["0x36/samples"] = eth_pkt[0x26]
                 data["0x36/voltage_1m"] = voltage / 10
                 data["0x36/frequency_1m"] = freq / 100
+                data["0x36/heater_diverted_w"] = diverted_pwr
+                data["0x36/heater_boost_w"] = boost_pwr
+                # Very likely export; not yet confirmed
+                data["0x36/grid_export_w"] = grid_export
                 # Usually zero; other channels (generation?) not yet mapped
-                for off in (0x28, 0x2A, 0x2E, 0x30, 0x32, 0x34):
+                for off in (0x2A, 0x2E, 0x30, 0x32):
                     data[f"0x36/raw_{off:02x}"] = int.from_bytes(
                         eth_pkt[off : off + 2], "little", signed=True
                     )

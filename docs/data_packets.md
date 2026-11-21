@@ -147,10 +147,12 @@ Values confirmed against the Eddi's readings screens on an Eddi V2.1.
 |      0x23     |       1      |   uint8   | Record date: month                                      |                 |
 |      0x24     |       1      |   uint8   | Record date: year                                       | + 2000          |
 |      0x26     |       1      |   uint8   | Seconds in the record (59 or 60)?                       |                 |
-|      0x28     |       4      |   int16   | Usually zero; other channels (generation?)              |                 |
-|      0x2C     |       2      |   int16   | Heater power (W), one-minute average (includes boost)   | N/A             |
-|      0x2E     |       8      |   int16   | Usually zero; other channels?                           |                 |
-|      0x36     |       2      |   int16   | Grid power (W); import positive (rose by the heater's 2.87 kW during a boost), export sign unconfirmed | N/A             |
+|      0x28     |       2      |   int16   | Heater power from diversion (W), one-minute average. Matches the live divert power within 2%; summed, it tracks the Eddi's diverted kWh | N/A |
+|      0x2A     |       2      |   int16   | Usually zero; another channel (generation?)             |                 |
+|      0x2C     |       2      |   int16   | Heater power from boost (W), one-minute average. 0 while diverting | N/A |
+|      0x2E     |       6      |   int16   | Usually zero; other channels?                           |                 |
+|      0x34     |       2      |   int16   | Very likely grid export (W), one-minute average: 4-64 W while the Eddi diverts to keep the grid near zero, 0 at night | N/A |
+|      0x36     |       2      |   int16   | Grid import (W), one-minute average. Import and export are averaged separately, so this never goes negative | N/A |
 |      0x38     |       2      |   int16   | Voltage                                                 | / 10            |
 |      0x3A     |       2      |   int16   | Frequency                                               | / 100           |
 |      0x3C     |       2      |   int16   | Heatsink temperature (°C)                               | / 10            |
