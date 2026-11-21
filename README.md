@@ -17,6 +17,10 @@ docker run -d --name mqtt-energi --restart unless-stopped \
 
 Setup, configuration and Home Assistant details: [MQTT Bridge](docs/mqtt_bridge.md).
 
+### Home Assistant add-on
+
+Add `https://github.com/BeryJu/mqtt-energi` under *Settings → Add-ons → Add-on store → ⋮ → Repositories*, then install **mqtt-energi**. It picks up Home Assistant's MQTT broker automatically.
+
 ## Data
 
 * Heater power, live and 1 minute average (W)

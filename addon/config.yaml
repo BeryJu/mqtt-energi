@@ -1,0 +1,39 @@
+name: mqtt-energi
+version: "0.1.0"
+slug: mqtt_energi
+description: Local MQTT bridge for myenergi devices (Eddi), with Home Assistant discovery
+url: https://github.com/BeryJu/mqtt-energi
+arch:
+  - amd64
+  - aarch64
+startup: services
+boot: auto
+# Sniffs raw Ethernet frames on the host's network and sets promiscuous mode
+host_network: true
+privileged:
+  - NET_RAW
+  - NET_ADMIN
+# Broker details come from the MQTT service (e.g. the Mosquitto broker add-on)
+services:
+  - mqtt:want
+options:
+  network_interface: ""
+  mqtt_topic: myenergi
+  discovery: true
+  discovery_prefix: homeassistant
+  expire_after: 120
+  log_level: INFO
+  debug_fields: false
+schema:
+  network_interface: str?
+  mqtt_host: str?
+  mqtt_port: port?
+  mqtt_user: str?
+  mqtt_password: password?
+  mqtt_client_id: str?
+  mqtt_topic: str
+  discovery: bool
+  discovery_prefix: str
+  expire_after: int(0,)
+  log_level: list(DEBUG|INFO|WARNING|ERROR)
+  debug_fields: bool

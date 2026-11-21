@@ -55,6 +55,13 @@ Logs go to stderr. Configure them in a `[LOGGING]` section or via environment:
 
 At `INFO` the bridge logs startup settings, MQTT connects and disconnects (with a hint when the connection keeps dropping, usually another client using the same `MQTT_ID`), new senders on the network, unknown packet types (once each), and a summary of received frames every 5 minutes.
 
+## Home Assistant add-on
+The repository doubles as a Home Assistant add-on repository (`repository.yaml`, `addon/`). Add `https://github.com/BeryJu/mqtt-energi` under *Settings → Add-ons → Add-on store → ⋮ → Repositories* and install **mqtt-energi**.
+
+- All options are in the add-on's configuration tab. The network interface defaults to the one with the default route.
+- The MQTT broker and credentials come from Home Assistant's MQTT service (e.g. the Mosquitto broker add-on) unless a broker is set in the options.
+- The add-on image builds on `ghcr.io/beryju/mqtt-energi:latest`, so that package must be public. *Rebuild* the add-on to pick up a newer image.
+
 ## Docker
 A container image is built by CI for `linux/amd64` and `linux/arm64` and published to `ghcr.io/beryju/mqtt-energi`. Use `latest` (the main branch), a release version like `1.2.3`, or a specific commit's `sha-<commit>` tag.
 

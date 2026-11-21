@@ -1,0 +1,37 @@
+configuration:
+  network_interface:
+    name: Network interface
+    description: Interface on the same network as the myenergi device. Leave empty to use the one with the default route.
+  mqtt_host:
+    name: MQTT broker
+    description: Leave empty to use Home Assistant's MQTT broker (e.g. the Mosquitto broker add-on).
+  mqtt_port:
+    name: MQTT port
+    description: Only used with a custom MQTT broker. Defaults to 1883.
+  mqtt_user:
+    name: MQTT username
+    description: Only used with a custom MQTT broker.
+  mqtt_password:
+    name: MQTT password
+    description: Only used with a custom MQTT broker.
+  mqtt_client_id:
+    name: MQTT client ID
+    description: Must be unique on the broker. Defaults to mqtt-energi-addon.
+  mqtt_topic:
+    name: MQTT topic
+    description: Values are published to <topic>/<serial>/<value>.
+  discovery:
+    name: Home Assistant discovery
+    description: Create the device and its entities in Home Assistant automatically.
+  discovery_prefix:
+    name: Discovery prefix
+    description: Must match the MQTT integration's discovery prefix.
+  expire_after:
+    name: Expire after (seconds)
+    description: Mark entities unavailable when no data arrives for this long. 0 disables it.
+  log_level:
+    name: Log level
+    description: DEBUG also logs every decoded packet.
+  debug_fields:
+    name: Publish raw debug fields
+    description: Also publish not yet decoded fields, for protocol research.
