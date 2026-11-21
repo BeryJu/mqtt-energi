@@ -60,7 +60,8 @@ The repository doubles as a Home Assistant add-on repository (`repository.yaml`,
 
 - All options are in the add-on's configuration tab. The network interface defaults to the one with the default route.
 - The MQTT broker and credentials come from Home Assistant's MQTT service (e.g. the Mosquitto broker add-on) unless a broker is set in the options.
-- The add-on image builds on `ghcr.io/beryju/mqtt-energi:latest`, so that package must be public. *Rebuild* the add-on to pick up a newer image.
+- The add-on pulls the prebuilt image `ghcr.io/beryju/mqtt-energi:<version>`, so that package must be public.
+- To release: bump `version` in `addon/config.yaml`, commit, and push a matching tag (`git tag v0.1.1 && git push origin main v0.1.1`). CI publishes the image for the tag; Home Assistant then offers the update. Push the tag together with the version bump, or the update fails until the image exists.
 
 ## Docker
 A container image is built by CI for `linux/amd64` and `linux/arm64` and published to `ghcr.io/beryju/mqtt-energi`. Use `latest` (the main branch), a release version like `1.2.3`, or a specific commit's `sha-<commit>` tag.

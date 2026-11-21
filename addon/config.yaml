@@ -1,8 +1,11 @@
 name: mqtt-energi
-version: "0.1.0"
+version: "0.1.1"
 slug: mqtt_energi
 description: Local MQTT bridge for myenergi devices (Eddi), with Home Assistant discovery
 url: https://github.com/BeryJu/mqtt-energi
+# Prebuilt multi-arch image from CI; the Supervisor pulls the tag matching
+# `version`, which CI publishes for the git tag v<version>.
+image: ghcr.io/beryju/mqtt-energi
 arch:
   - amd64
   - aarch64

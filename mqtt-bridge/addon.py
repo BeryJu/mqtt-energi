@@ -1,4 +1,7 @@
-"""Home Assistant add-on entry point.
+"""Container entry point; sets the bridge up as a Home Assistant add-on.
+
+Outside Home Assistant (no /data/options.json) the bridge starts unchanged,
+configured by its environment variables or config.ini. As an add-on it:
 
 Reads the add-on options (/data/options.json), fills in the broker from the
 Supervisor's MQTT service when no broker is configured, turns everything into
@@ -90,9 +93,10 @@ def main():
         with open(OPTIONS_PATH) as f:
             options = json.load(f)
     except FileNotFoundError:
-        options = {}
-    service = None if options.get("mqtt_host") else supervisor_mqtt()
-    os.environ.update(build_env(options, service))
+        options = None  # not running as a Home Assistant add-on
+    if options is not None:
+        service = None if options.get("mqtt_host") else supervisor_mqtt()
+        os.environ.update(build_env(options, service))
     sys.argv = [BRIDGE]
     runpy.run_path(BRIDGE, run_name="__main__")
 

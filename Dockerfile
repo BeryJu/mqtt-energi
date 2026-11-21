@@ -13,10 +13,14 @@ RUN uv sync --locked --no-dev --no-install-project
 
 COPY mqtt-bridge/ mqtt-bridge/
 
+# Also used as the Home Assistant add-on image (addon/config.yaml)
+LABEL io.hass.type="addon"
+
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1
 
 # Settings come from environment variables named <SECTION>_<OPTION>
 # (e.g. MQTT_BROKER, NETWORK_NIC), or a config.ini mounted at
 # /app/mqtt-bridge/config.ini. Needs --network host, NET_RAW and NET_ADMIN.
-CMD ["python", "mqtt-bridge/mqtt-energi.py"]
+# As a Home Assistant add-on, addon.py maps the add-on options first.
+CMD ["python", "mqtt-bridge/addon.py"]
