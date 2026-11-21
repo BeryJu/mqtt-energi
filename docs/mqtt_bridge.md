@@ -54,6 +54,8 @@ Logs go to stderr. Configure them in a `[LOGGING]` section or via environment:
 | `paho_level` | `LOGGING_PAHO_LEVEL` | `WARNING` | log level of the MQTT client library; `DEBUG` logs every MQTT packet |
 
 At `INFO` the bridge logs startup settings, MQTT connects and disconnects (with a hint when the connection keeps dropping, usually another client using the same `MQTT_ID`), new senders on the network, unknown packet types (once each), and a summary of received frames every 5 minutes.
+
+## Docker
 A container image is built by CI for `linux/amd64` and `linux/arm64` and published to `ghcr.io/beryju/mqtt-energi`. Use `latest` (the main branch), a release version like `1.2.3`, or a specific commit's `sha-<commit>` tag.
 
 The container needs the host's network (to see the myenergi frames) plus the `NET_RAW` and `NET_ADMIN` capabilities (raw socket and promiscuous mode):
