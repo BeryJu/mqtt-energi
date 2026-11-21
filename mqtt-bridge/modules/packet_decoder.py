@@ -1,4 +1,33 @@
+import datetime
 import struct
+
+
+# Per-serial state for 0x36 history records: (frames seen, newest record time)
+_history = {}
+# Replayed records are never newer than the current one. After this many 0x36
+# frames (about a minute) the newest record seen is the live one.
+HISTORY_WARMUP_FRAMES = 30
+
+
+def _history_time(eth_pkt):
+    """Record time from a 0x36 frame, in the Eddi's local time (naive)."""
+    try:
+        return datetime.datetime(
+            2000 + eth_pkt[0x24],  # year
+            eth_pkt[0x23],  # month
+            eth_pkt[0x22],  # day
+            eth_pkt[0x21] & 0x1F,  # hour (top 3 bits: weekday, Monday = 0)
+            eth_pkt[0x20],  # minute
+        )
+    except ValueError:  # all-zero / malformed record
+        return None
+
+
+def _history_is_new(serial, record_time):
+    seen, newest = _history.get(serial, (0, None))
+    is_newer = newest is None or record_time > newest
+    _history[serial] = (seen + 1, record_time if is_newer else newest)
+    return is_newer and seen + 1 >= HISTORY_WARMUP_FRAMES
 
 
 def status_decode(inbyte):
@@ -143,47 +172,32 @@ def decode_packet(eth_pkt, debug):
                 "0x37/v7": v7,
             }
 
-    elif packet_type == 0x36:  # ?
+    elif packet_type == 0x36:  # Per-minute history record
+        # The Eddi keeps sending its stored one-minute records (about a week of
+        # them), mixed in with the record for the minute that just ended. Only
+        # publish records newer than any seen before; see _history_is_new().
         serialno = int.from_bytes(eth_pkt[0x4A:0x4E], "little")
-
-        v1 = int.from_bytes(eth_pkt[0x1C:0x1E], "little", signed=True)
-        v2 = int.from_bytes(eth_pkt[0x1E:0x20], "little", signed=True)
-        v3 = int.from_bytes(eth_pkt[0x20:0x22], "little", signed=True)
-        v4 = int.from_bytes(eth_pkt[0x22:0x24], "little", signed=True)
-        v5 = int.from_bytes(eth_pkt[0x24:0x26], "little", signed=True)
-        v6 = int.from_bytes(eth_pkt[0x30:0x32], "little", signed=True)
-        v7 = int.from_bytes(eth_pkt[0x34:0x36], "little", signed=True)
-        v8 = int.from_bytes(eth_pkt[0x36:0x38], "little", signed=True)
-        v9 = int.from_bytes(eth_pkt[0x38:0x3A], "little", signed=True)  # Voltage?
-        v10 = int.from_bytes(eth_pkt[0x3A:0x3C], "little", signed=True)  # Frequency
-        v11 = int.from_bytes(eth_pkt[0x3C:0x3E], "little", signed=True)  # Heatsink Temp
-        v12 = int.from_bytes(eth_pkt[0x3E:0x40], "little", signed=True)
-        v13 = int.from_bytes(eth_pkt[0x40:0x42], "little", signed=True)
-        v14 = int.from_bytes(eth_pkt[0x42:0x44], "little", signed=True)
-        v15 = int.from_bytes(eth_pkt[0x44:0x46], "little", signed=True)
-        v16 = int.from_bytes(eth_pkt[0x46:0x48], "little", signed=True)
-        v17 = int.from_bytes(eth_pkt[0x48:0x4A], "little", signed=True)
-        if debug:
+        record_time = _history_time(eth_pkt)
+        if record_time is not None and _history_is_new(serialno, record_time):
+            grid_pwr = int.from_bytes(eth_pkt[0x36:0x38], "little", signed=True)
+            voltage = int.from_bytes(eth_pkt[0x38:0x3A], "little")
+            freq = int.from_bytes(eth_pkt[0x3A:0x3C], "little")
+            heatsink = int.from_bytes(eth_pkt[0x3C:0x3E], "little", signed=True)
             data = {
                 "serial": serialno,
-                "0x36/v1": v1,
-                "0x36/v2": v2,
-                "0x36/v3": v3,
-                "0x36/v4": v4,
-                "0x36/v5": v5,
-                "0x36/v6": v6,
-                "0x36/v7": v7,
-                "0x36/v8": v8,
-                "0x36/v9": v9,
-                "0x36/v10": v10,
-                "0x36/v11": v11,
-                "0x36/v12": v12,
-                "0x36/v13": v13,
-                "0x36/v14": v14,
-                "0x36/v15": v15,
-                "0x36/v16": v16,
-                "0x36/v17": v17,
+                "grid_pwr_1m_w": grid_pwr,
+                "heatsink_temp_c": heatsink / 10,
             }
+            if debug:
+                data["0x36/record_time"] = record_time.isoformat()
+                data["0x36/samples"] = eth_pkt[0x26]
+                data["0x36/voltage_1m"] = voltage / 10
+                data["0x36/frequency_1m"] = freq / 100
+                # Usually zero here; likely other channels (generation, divert)
+                for off in range(0x28, 0x36, 2):
+                    data[f"0x36/raw_{off:02x}"] = int.from_bytes(
+                        eth_pkt[off : off + 2], "little", signed=True
+                    )
     elif packet_type == 0x38:  # ?
         serialno = int.from_bytes(eth_pkt[0x1E:0x22], "little")
         v1 = int.from_bytes(eth_pkt[0x20:0x22], "little", signed=True)

@@ -13,7 +13,7 @@ All packets start with a 30 byte long header formatted as below
 |      0x14     |       1      | Unknown            | 0x01                |
 |      0x15     |       3      | Unknown (Padding)  | 0x00                |
 |      0x18     |       1      | Message Length     | Various (See Below) |
-|      0x19     |       1      | Device Type ?      | Always 0x53         |
+|      0x19     |       1      | Device / Sender ID? | 0x53, 0xA9 (Eddi V2.1) and 0xE5 (Zappi) seen |
 |      0x1A     |       2      | Message Type  1  ? |                     |
 |      0x1B     |       2      | Message Type  2  ? |                     |
 
@@ -29,7 +29,7 @@ Various Types of packets have been observed so far.
 |     0x2D    |          69         | ??                              |            12           |                              |
 |     0x22    |          58         | CT Readings?                    |            2            |                              |
 |     0x27    |          63         | Unknown                         |            4            |                              |
-|     0x36    |          78         | Unknown                         |            2            |                              |
+|     0x36    |          78         | Per-minute history record       |            2            | replays ~a week of records   |
 |     0x37    |          79         | Unknown                         |            tbc          |                              |
 |     0x38    |          80         | Unknown                         |            tbc          |                              |
 |     0x39    |          81         | Unknown                         |            tbc          |                              |
@@ -115,17 +115,30 @@ Transmitted approx every 4 seconds
 |      0x3D     |       2      |   int16   | Unknown. Seems to track diverter power but not exactly  |                 |
 
 
-### 0x36 - Unknown
+### 0x36 - Per-minute history record
 
-Transmitted approx every 2 seconds
-Occassionally drops all readings to zero. 
+Transmitted approx every 2 seconds. Each frame carries one stored record of one-minute averages. The Eddi keeps sending its stored records (about a week of them) mixed in with the record for the minute that just ended. That record first arrives about 2 minutes after its minute starts and is repeated several times. A record is only "live" if it is newer than every record seen before.
+
+Values confirmed against the Eddi's readings screens on an Eddi V2.1.
 
 | Start Address | Size (Bytes) | Data Type | Description                                             | Post Processing |
 |---------------|--------------|-----------|---------------------------------------------------------|-----------------|
+|      0x1A     |       4      |           | Constant `5A 5A C8 01`                                  |                 |
+|      0x1E     |       2      |           | Constant `30 0C` (0 in an all-zero record)              |                 |
+|      0x20     |       1      |   uint8   | Record time: minute                                     |                 |
+|      0x21     |       1      |   uint8   | Record time: hour (bits 0-4), weekday (bits 5-7, Monday = 0) | `& 0x1F` / `>> 5` |
+|      0x22     |       1      |   uint8   | Record date: day                                        |                 |
+|      0x23     |       1      |   uint8   | Record date: month                                      |                 |
+|      0x24     |       1      |   uint8   | Record date: year                                       | + 2000          |
+|      0x26     |       1      |   uint8   | Seconds in the record (59 or 60)?                       |                 |
+|      0x28     |      14      |   int16   | Usually zero; other channels (generation, divert)?     |                 |
+|      0x36     |       2      |   int16   | Grid power (W); import positive, export sign unconfirmed | N/A             |
+|      0x38     |       2      |   int16   | Voltage                                                 | / 10            |
+|      0x3A     |       2      |   int16   | Frequency                                               | / 100           |
+|      0x3C     |       2      |   int16   | Heatsink temperature (°C)                               | / 10            |
 |      0x4A     |       4      |   int32   | Serial Number                                           | N/A             |
-|      0x3A     |       2      |   int16   | Frequency (Seems to update faster than 0x1F)            |                 |
-|      0x3C     |       2      |   int16   | Possibly Heatsink Temperature?                          |                 |  
-|      0x38     |       2      |   int16   | Voltage (Seems to update faster than 0x1F)              |                 |
+
+The record time is the Eddi's local time (as set on the device). The minimum/maximum voltage and grid current shown on the Eddi's readings screens were not found in any packet.
 
 ### 0x37 - Unknown
 

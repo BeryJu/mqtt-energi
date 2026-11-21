@@ -49,6 +49,24 @@ ENTITIES = {
         "unit_of_measurement": "W",
         "state_class": "measurement",
     },
+    "grid_pwr_1m_w": {
+        # From the per-minute 0x36 records, so updates about once a minute.
+        "component": "sensor",
+        "name": "Grid power (1 min average)",
+        "device_class": "power",
+        "unit_of_measurement": "W",
+        "state_class": "measurement",
+        "expire_after": 300,
+    },
+    "heatsink_temp_c": {
+        "component": "sensor",
+        "name": "Heatsink temperature",
+        "device_class": "temperature",
+        "unit_of_measurement": "°C",
+        "state_class": "measurement",
+        "entity_category": "diagnostic",
+        "expire_after": 300,
+    },
     "grid_pwr": {
         "component": "sensor",
         "name": "Grid power",
@@ -119,14 +137,21 @@ class Discovery:
             },
             "origin": {"name": "mqtt-energi"},
         }
-        for opt in ("device_class", "unit_of_measurement", "state_class", "icon"):
+        for opt in (
+            "device_class",
+            "unit_of_measurement",
+            "state_class",
+            "icon",
+            "entity_category",
+        ):
             if opt in spec:
                 cfg[opt] = spec[opt]
         if spec["component"] == "binary_sensor":
             cfg["payload_on"] = "1"
             cfg["payload_off"] = "0"
-        if self.expire_after:
-            cfg["expire_after"] = self.expire_after
+        expire_after = spec.get("expire_after", self.expire_after)
+        if self.expire_after and expire_after:
+            cfg["expire_after"] = max(expire_after, self.expire_after)
         return cfg
 
     def announce(self, serial, keys):
