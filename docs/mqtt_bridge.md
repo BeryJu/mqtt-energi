@@ -9,6 +9,7 @@ This has only been tested recieving the following data from a Eddi V2.1 unit. Ot
 * Current Grid Power / Generation Power / Divert Power
 * Grid Power (1 minute average) and Heatsink Temperature
 * Heater Max Power and Firmware Version
+* Heater Power (1 minute average) and Heater Energy (kWh, includes boost; "Diverted energy today" does not)
 * Total Diverted Energy
 * Active Heater Channel
 * Boost & stopped status

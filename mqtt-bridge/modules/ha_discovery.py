@@ -38,7 +38,7 @@ ENTITIES = {
     "diverted_kWh": {
         # Resets daily; total_increasing treats the drop to 0 as a new cycle.
         "component": "sensor",
-        "name": "Diverted energy today",
+        "name": "Diverted energy today (excludes boost)",
         "device_class": "energy",
         "unit_of_measurement": "kWh",
         "state_class": "total_increasing",
@@ -66,6 +66,24 @@ ENTITIES = {
         "name": "Firmware",
         "icon": "mdi:chip",
         "entity_category": "diagnostic",
+    },
+    "heater_pwr_1m_w": {
+        # From the per-minute 0x36 records, so updates about once a minute.
+        "component": "sensor",
+        "name": "Heater power (1 min average)",
+        "device_class": "power",
+        "unit_of_measurement": "W",
+        "state_class": "measurement",
+        "expire_after": 300,
+    },
+    "heater_kWh": {
+        # Includes boost, unlike diverted_kWh. Counts from 0 when the bridge
+        # starts; total_increasing treats that as a new cycle.
+        "component": "sensor",
+        "name": "Heater energy",
+        "device_class": "energy",
+        "unit_of_measurement": "kWh",
+        "state_class": "total_increasing",
     },
     "grid_pwr_1m_w": {
         # From the per-minute 0x36 records, so updates about once a minute.

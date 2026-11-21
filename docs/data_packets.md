@@ -28,8 +28,8 @@ These fields sit at the same offsets in every packet type observed from an Eddi 
 |      0x1E     |       4      |  uint32   | Serial Number | N/A |
 |      0x22     |       2      |  uint16   | Frequency | / 100 |
 |      0x25     |       1      |  bits     | Status (bit 7: stopped) | |
-|      0x26     |       2      |  uint16   | Heater max power (W): what the heater draws at full output, tracks V² / element resistance (correlation 0.999; matches "MaxPower" on the Eddi's diagnostic screens) | N/A |
-|      0x2C     |       2      |  uint16   | Diverted energy today (kWh) | / 100 |
+|      0x26     |       2      |  uint16   | Heater max power (W), "MaxPower" on the Eddi's diagnostic screens. While the heater runs it is the measured element power (2.88 kW on a 3 kW element); when idle a nominal value that tracks V² / 15 Ω, i.e. 16 A (≈3.84 kW at 240 V) | N/A |
+|      0x2C     |       2      |  uint16   | Diverted energy today (kWh). Surplus diversion only: does **not** count boost (stayed at 0.00 through a 4 minute, 2.86 kW boost) | / 100 |
 |      0x2E     |       1      |  bits     | Status (bit 4: boost) | |
 |      0x2F     |       1      |  bits     | Selected heater (bit 0: heater 1, bit 1: heater 2) | |
 
@@ -76,8 +76,8 @@ Transmitted Approx Every 24 seconds
 |      0x24     |       2      |   bool    | Status Bit?          |                 |
 |      0x26     |       2      |   int16   | Max Heater Power (*1)|                 |
 |      0x34     |       2      |   int16   | Divert Power (W)     | N/A (matches the Eddi display) |
-|      0x36     |       2      |   int16   | Divert Current?      |   / 100         |
-|      0x2E.0   |       1      | bool      | Boosting             |  N/A            |
+|      0x36     |       2      |   int16   | Heater current (A); 12.2 A at 2.86 kW / 235 V. Reads 0.01-0.50 when idle | / 100 |
+|      0x2E (mask 0x10) | 1  | bool      | Boosting (confirmed with a manual boost) |  N/A            |
 |      0x2F.7   |       1      | bool      | Heater 1 Active      |  N/A            |
 |      0x2F.6   |       1      | bool      | Heater 2 Active      |  N/A            |
 |      0x2F.5   |       1      | bool      | unknown              |  N/A            |
@@ -147,14 +147,16 @@ Values confirmed against the Eddi's readings screens on an Eddi V2.1.
 |      0x23     |       1      |   uint8   | Record date: month                                      |                 |
 |      0x24     |       1      |   uint8   | Record date: year                                       | + 2000          |
 |      0x26     |       1      |   uint8   | Seconds in the record (59 or 60)?                       |                 |
-|      0x28     |      14      |   int16   | Usually zero; other channels (generation, divert)?     |                 |
-|      0x36     |       2      |   int16   | Grid power (W); import positive, export sign unconfirmed | N/A             |
+|      0x28     |       4      |   int16   | Usually zero; other channels (generation?)              |                 |
+|      0x2C     |       2      |   int16   | Heater power (W), one-minute average (includes boost)   | N/A             |
+|      0x2E     |       8      |   int16   | Usually zero; other channels?                           |                 |
+|      0x36     |       2      |   int16   | Grid power (W); import positive (rose by the heater's 2.87 kW during a boost), export sign unconfirmed | N/A             |
 |      0x38     |       2      |   int16   | Voltage                                                 | / 10            |
 |      0x3A     |       2      |   int16   | Frequency                                               | / 100           |
 |      0x3C     |       2      |   int16   | Heatsink temperature (°C)                               | / 10            |
 |      0x4A     |       4      |   int32   | Serial Number                                           | N/A             |
 
-The record time is the Eddi's local time (as set on the device). The minimum/maximum voltage and grid current shown on the Eddi's readings screens were not found in any packet.
+The record time is the Eddi's local time (as set on the device). The Eddi's clock may drift from real time; one unit ran about 65 seconds behind. The minimum/maximum voltage and grid current shown on the Eddi's readings screens were not found in any packet.
 
 ### 0x37 - Device information
 

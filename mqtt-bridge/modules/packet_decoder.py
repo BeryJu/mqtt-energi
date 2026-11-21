@@ -9,6 +9,10 @@ logger = log.get("decoder")
 _history = {}
 # Packet types without a decoder, so each is only logged once
 _unknown_types = set()
+# Per-serial heater energy (kWh) summed from the 0x36 minute records since the
+# bridge started. Published as a total_increasing counter: Home Assistant treats
+# the drop to 0 after a restart as a new cycle, so nothing is lost or doubled.
+_heater_energy = {}
 # Replayed records are never newer than the current one. After this many 0x36
 # frames (about a minute) the newest record seen is the live one.
 HISTORY_WARMUP_FRAMES = 30
@@ -184,12 +188,21 @@ def decode_packet(eth_pkt, debug):
         serialno = int.from_bytes(eth_pkt[0x4A:0x4E], "little")
         record_time = _history_time(eth_pkt)
         if record_time is not None and _history_is_new(serialno, record_time):
+            heater_pwr = int.from_bytes(eth_pkt[0x2C:0x2E], "little", signed=True)
             grid_pwr = int.from_bytes(eth_pkt[0x36:0x38], "little", signed=True)
             voltage = int.from_bytes(eth_pkt[0x38:0x3A], "little")
             freq = int.from_bytes(eth_pkt[0x3A:0x3C], "little")
             heatsink = int.from_bytes(eth_pkt[0x3C:0x3E], "little", signed=True)
+            # Seconds covered by the record (59 or 60)
+            seconds = eth_pkt[0x26] if 0 < eth_pkt[0x26] <= 60 else 60
+            # Unlike diverted_kWh, this includes boost (grid-powered) heating
+            energy = _heater_energy.get(serialno, 0.0)
+            energy += max(heater_pwr, 0) * seconds / 3_600_000
+            _heater_energy[serialno] = energy
             data = {
                 "serial": serialno,
+                "heater_pwr_1m_w": heater_pwr,
+                "heater_kWh": round(energy, 4),
                 "grid_pwr_1m_w": grid_pwr,
                 "heatsink_temp_c": heatsink / 10,
             }
@@ -198,8 +211,8 @@ def decode_packet(eth_pkt, debug):
                 data["0x36/samples"] = eth_pkt[0x26]
                 data["0x36/voltage_1m"] = voltage / 10
                 data["0x36/frequency_1m"] = freq / 100
-                # Usually zero here; likely other channels (generation, divert)
-                for off in range(0x28, 0x36, 2):
+                # Usually zero; other channels (generation?) not yet mapped
+                for off in (0x28, 0x2A, 0x2E, 0x30, 0x32, 0x34):
                     data[f"0x36/raw_{off:02x}"] = int.from_bytes(
                         eth_pkt[off : off + 2], "little", signed=True
                     )
