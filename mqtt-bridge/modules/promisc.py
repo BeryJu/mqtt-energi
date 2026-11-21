@@ -2,6 +2,10 @@ import ctypes
 import fcntl
 from socket import AF_NETLINK, SOCK_DGRAM, socket
 
+from modules import log
+
+logger = log.get("promisc")
+
 IFF_PROMISC = 0x100
 SIOCGIFFLAGS = 0x8913
 SIOCSIFFLAGS = 0x8914
@@ -12,6 +16,7 @@ class ifreq(ctypes.Structure):
 
 
 def set(nic, state):
+    logger.info("promiscuous mode", nic=nic, enabled=bool(state))
     ifr = ifreq()
     ifr.ifr_ifrn = str.encode(nic)
     with socket(AF_NETLINK, SOCK_DGRAM) as s:

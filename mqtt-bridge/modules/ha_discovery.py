@@ -14,6 +14,10 @@ See https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery
 import json
 import threading
 
+from modules import log
+
+logger = log.get("discovery")
+
 # Decoded data keys that Home Assistant should know about. Keys not listed here
 # (e.g. the raw 0x36/v1 debug fields) are still published, just not announced.
 ENTITIES = {
@@ -158,6 +162,7 @@ class Discovery:
         """Publish discovery configs for any keys of `serial` not yet announced."""
         with self._lock:
             done = self._announced.setdefault(serial, set())
+            announced = 0
             for key in keys:
                 spec = ENTITIES.get(key)
                 if spec is None or key in done:
@@ -170,7 +175,13 @@ class Discovery:
                     qos=1,
                     retain=True,
                 )
+                logger.debug("announced entity", serial=serial, key=key, topic=topic)
                 done.add(key)
+                announced += 1
+            if announced:
+                logger.info(
+                    "announced to Home Assistant", serial=serial, entities=announced
+                )
 
     def reannounce(self):
         """Re-send all configs, e.g. after Home Assistant restarts."""
@@ -186,5 +197,9 @@ class Discovery:
         self.reannounce()
 
     def on_message(self, msg):
-        if msg.topic == self.status_topic and msg.payload == b"online":
-            self.reannounce()
+        if msg.topic == self.status_topic:
+            logger.info(
+                "Home Assistant status", status=msg.payload.decode(errors="replace")
+            )
+            if msg.payload == b"online":
+                self.reannounce()

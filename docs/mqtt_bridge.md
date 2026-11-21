@@ -40,9 +40,18 @@ sudo .venv/bin/python mqtt-bridge/mqtt-energi.py
 ```
 
 ### Configuration via environment
-Every option can also be set with an environment variable named `<SECTION>_<OPTION>`, which overrides `config.ini`. For example `NETWORK_NIC`, `MQTT_BROKER`, `MQTT_PORT`, `MQTT_TOPIC`, `MQTT_ID`, `MQTT_USER`, `MQTT_PASS`, `DEBUG_ENABLED`, `HOMEASSISTANT_ENABLED`, `HOMEASSISTANT_DISCOVERY_PREFIX`.
+Every option can also be set with an environment variable named `<SECTION>_<OPTION>`, which overrides `config.ini`. For example `NETWORK_NIC`, `MQTT_BROKER`, `MQTT_PORT`, `MQTT_TOPIC`, `MQTT_ID`, `MQTT_USER`, `MQTT_PASS`, `DEBUG_ENABLED`, `HOMEASSISTANT_ENABLED`, `HOMEASSISTANT_DISCOVERY_PREFIX`, `LOGGING_LEVEL`.
 
-## Docker
+### Logging
+Logs go to stderr. Configure them in a `[LOGGING]` section or via environment:
+
+| Option | Environment | Default | |
+|---|---|---|---|
+| `level` | `LOGGING_LEVEL` | `INFO` | `DEBUG` also logs every decoded packet and discovery message |
+| `format` | `LOGGING_FORMAT` | `console` | `json` writes one JSON object per line, for log collectors |
+| `paho_level` | `LOGGING_PAHO_LEVEL` | `WARNING` | log level of the MQTT client library; `DEBUG` logs every MQTT packet |
+
+At `INFO` the bridge logs startup settings, MQTT connects and disconnects (with a hint when the connection keeps dropping, usually another client using the same `MQTT_ID`), new senders on the network, unknown packet types (once each), and a summary of received frames every 5 minutes.
 A container image is built by CI for `linux/amd64` and `linux/arm64` and published to `ghcr.io/beryju/mqtt-energi`. Use `latest` (the main branch), a release version like `1.2.3`, or a specific commit's `sha-<commit>` tag.
 
 The container needs the host's network (to see the myenergi frames) plus the `NET_RAW` and `NET_ADMIN` capabilities (raw socket and promiscuous mode):

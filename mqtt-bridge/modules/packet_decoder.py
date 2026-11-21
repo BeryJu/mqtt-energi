@@ -1,9 +1,14 @@
 import datetime
 import struct
 
+from modules import log
+
+logger = log.get("decoder")
 
 # Per-serial state for 0x36 history records: (frames seen, newest record time)
 _history = {}
+# Packet types without a decoder, so each is only logged once
+_unknown_types = set()
 # Replayed records are never newer than the current one. After this many 0x36
 # frames (about a minute) the newest record seen is the live one.
 HISTORY_WARMUP_FRAMES = 30
@@ -27,6 +32,12 @@ def _history_is_new(serial, record_time):
     seen, newest = _history.get(serial, (0, None))
     is_newer = newest is None or record_time > newest
     _history[serial] = (seen + 1, record_time if is_newer else newest)
+    if seen + 1 == HISTORY_WARMUP_FRAMES:
+        logger.info(
+            "history warm-up done",
+            serial=serial,
+            newest_record=(record_time if is_newer else newest).isoformat(),
+        )
     return is_newer and seen + 1 >= HISTORY_WARMUP_FRAMES
 
 
@@ -272,7 +283,12 @@ def decode_packet(eth_pkt, debug):
                 "0x3A/v15": v15,
             }
 
-    else:
-        dummy = True
-        # print(f'type:{hex(packet_type)}, Packet Length: {packet_len} [UNIMPLEMENTED]')
+    elif packet_type not in _unknown_types:
+        _unknown_types.add(packet_type)
+        logger.info(
+            "unknown packet type (logged once per type)",
+            packet_type=f"0x{packet_type:02X}",
+            length=packet_len,
+            payload=eth_pkt.hex(),
+        )
     return data

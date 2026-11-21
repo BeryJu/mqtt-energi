@@ -18,6 +18,7 @@ DEFAULTS = {
         "pass": "",
     },
     "DEBUG": {"enabled": "False"},
+    "LOGGING": {"level": "INFO", "format": "console", "paho_level": "WARNING"},
     "HOMEASSISTANT": {
         "enabled": "False",
         "discovery_prefix": "homeassistant",
