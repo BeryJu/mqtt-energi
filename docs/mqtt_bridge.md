@@ -7,7 +7,7 @@ In its current form, this probably only works on linux based systems due to havi
 This has only been tested recieving the following data from an Eddi V2.1 unit (and a Zappi V2.1 for grid power). Other capabilities may follow if the protocol is better understood
 * Current Supply Voltage / Frequency
 * Current Grid Power / Generation Power / Divert Power
-* Live Grid Power from a Zappi on the same network (with its grid CT), plus its supply voltage / frequency
+* From a Zappi on the same network: live grid power, power and current of each CT, house power (grid plus battery / inverter CTs), supply voltage / frequency, and grid import / export and house energy (kWh) counted by the bridge
 * Grid Import (1 minute average) and Heatsink Temperature
 * Heater Max Power and Firmware Version
 * Heater Power (1 minute average) and Heater Energy (kWh, includes boost; "Diverted energy today" does not)
@@ -50,11 +50,11 @@ Logs go to stderr. Configure them in a `[LOGGING]` section or via environment:
 
 | Option | Environment | Default | |
 |---|---|---|---|
-| `level` | `LOGGING_LEVEL` | `INFO` | `DEBUG` also logs every decoded packet and discovery message |
+| `level` | `LOGGING_LEVEL` | `INFO` | `DEBUG` also logs every decoded packet, discovery message, and (once each) packet types the decoder does not know |
 | `format` | `LOGGING_FORMAT` | `console` | `json` writes one JSON object per line, for log collectors |
 | `paho_level` | `LOGGING_PAHO_LEVEL` | `WARNING` | log level of the MQTT client library; `DEBUG` logs every MQTT packet |
 
-At `INFO` the bridge logs startup settings, MQTT connects and disconnects (with a hint when the connection keeps dropping, usually another client using the same `MQTT_ID`), new senders on the network, unknown packet types (once each), and a summary of received frames every 5 minutes.
+At `INFO` the bridge logs startup settings, MQTT connects and disconnects (with a hint when the connection keeps dropping, usually another client using the same `MQTT_ID`), new senders on the network, and a summary of received frames every 5 minutes.
 
 ## Home Assistant add-on
 The repository doubles as a Home Assistant add-on repository (`repository.yaml`, `addon/`). Add `https://github.com/BeryJu/mqtt-energi` under *Settings → Add-ons → Add-on store → ⋮ → Repositories* and install **mqtt-energi**.

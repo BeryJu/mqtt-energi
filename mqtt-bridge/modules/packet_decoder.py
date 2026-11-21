@@ -1,5 +1,6 @@
 import datetime
 import struct
+import time
 
 from modules import log
 
@@ -65,13 +66,53 @@ def _log_unknown_type(eth_pkt):
     packet_type = eth_pkt[0x18]
     if (eth_pkt[0x1C], packet_type) not in _unknown_types:
         _unknown_types.add((eth_pkt[0x1C], packet_type))
-        logger.info(
+        logger.debug(
             "unknown packet type (logged once per type)",
             device=f"0x{eth_pkt[0x1C]:02X}",
             packet_type=f"0x{packet_type:02X}",
             length=len(eth_pkt),
             payload=eth_pkt.hex(),
         )
+
+
+# Zappi CT types (the "TY" column of its CT screens) seen in 0x33 blocks
+CT_NONE = 0
+CT_GRID = 1
+# Type 4 here is a home battery / inverter feeding the house (no myenergi
+# documentation; named from what it measures). Counted as a house source.
+CT_SOURCE_TYPES = {4}
+# Per-serial energy counters (kWh) summed from 0x33 since the bridge started,
+# published as total_increasing like heater_kWh.
+_zappi_energy = {}
+# Ignore gaps longer than this when integrating (frames missed, bridge paused)
+MAX_INTEGRATION_GAP_S = 60
+
+
+def _ct_blocks(eth_pkt):
+    """(ct number, ct type, power W, current A) for each CT block in a 0x33 frame."""
+    offset = 0x30
+    while offset + 8 <= len(eth_pkt) and eth_pkt[offset] == 0x08:
+        block = eth_pkt[offset : offset + 8]
+        yield (
+            block[1] >> 4,
+            block[2],
+            int.from_bytes(block[4:6], "little", signed=True),
+            int.from_bytes(block[6:8], "little") / 100,
+        )
+        offset += 8
+
+
+def _integrate(serial, powers, now=None):
+    """Add power (W) since the previous call to the serial's kWh counters."""
+    now = time.monotonic() if now is None else now
+    state = _zappi_energy.setdefault(serial, {"t": None, "kwh": {}})
+    last = state["t"]
+    state["t"] = now
+    for key, watts in powers.items():
+        state["kwh"].setdefault(key, 0.0)
+        if last is not None and 0 < now - last <= MAX_INTEGRATION_GAP_S:
+            state["kwh"][key] += max(watts, 0) * (now - last) / 3_600_000
+    return {key: round(kwh, 4) for key, kwh in state["kwh"].items()}
 
 
 def decode_zappi(eth_pkt, debug):
@@ -101,6 +142,37 @@ def decode_zappi(eth_pkt, debug):
             data["0x2A/eddi_pwr_w"] = int.from_bytes(
                 eth_pkt[0x31:0x33], "little", signed=True
             )
+    elif packet_type == 0x33:  # Per-CT readings, about every 5 seconds
+        # From 0x30, one 8-byte block per CT: 08, CT number << 4 | 1, CT type,
+        # 00, power (int16 W), current (uint16, 0.01 A).
+        serialno = int.from_bytes(eth_pkt[0x1E:0x22], "little")
+        data = {"serial": serialno}
+        grid = None
+        sources = 0
+        for number, ct_type, power, current in _ct_blocks(eth_pkt):
+            if ct_type == CT_NONE:
+                continue
+            data[f"ct{number}_pwr_w"] = power
+            data[f"ct{number}_current_a"] = current
+            if debug:
+                data[f"0x33/ct{number}_type"] = ct_type
+            if ct_type == CT_GRID:
+                grid = power
+            elif ct_type in CT_SOURCE_TYPES:
+                sources += power
+        if grid is not None:
+            # Everything the house uses (including the Eddi and the Zappi)
+            house = grid + max(sources, 0)
+            data["house_pwr_w"] = house
+            energy = _integrate(
+                serialno,
+                {
+                    "grid_import_kWh": grid,
+                    "grid_export_kWh": -grid,
+                    "house_kWh": house,
+                },
+            )
+            data.update(energy)
     else:
         # Per-minute history (0x3E) and the rest are not mapped yet
         _log_unknown_type(eth_pkt)
@@ -115,7 +187,7 @@ def decode_packet(eth_pkt, debug):
     if device != EDDI and packet_type != 0x22:
         if device not in _unknown_devices:
             _unknown_devices.add(device)
-            logger.info(
+            logger.debug(
                 "frames from an unknown device type are ignored (logged once)",
                 device=f"0x{device:02X}",
                 packet_type=f"0x{packet_type:02X}",
@@ -289,7 +361,7 @@ def decode_packet(eth_pkt, debug):
                 data["0x36/frequency_1m"] = freq / 100
                 data["0x36/heater_diverted_w"] = diverted_pwr
                 data["0x36/heater_boost_w"] = boost_pwr
-                # Very likely export; not yet confirmed
+                # Matches the Zappi's own export reading
                 data["0x36/grid_export_w"] = grid_export
                 # Usually zero; other channels (generation?) not yet mapped
                 for off in (0x2A, 0x2E, 0x30, 0x32):

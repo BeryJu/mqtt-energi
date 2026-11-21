@@ -115,6 +115,40 @@ ENTITIES = {
         "unit_of_measurement": "W",
         "state_class": "measurement",
     },
+    "house_pwr_w": {
+        # Grid plus battery / inverter CTs (Zappi CT types 1 and 4)
+        "models": ("Zappi",),
+        "component": "sensor",
+        "name": "House power",
+        "device_class": "power",
+        "unit_of_measurement": "W",
+        "state_class": "measurement",
+    },
+    "grid_import_kWh": {
+        # Counted by the bridge from 0x33; starts at 0 when the bridge starts
+        "models": ("Zappi",),
+        "component": "sensor",
+        "name": "Grid import energy",
+        "device_class": "energy",
+        "unit_of_measurement": "kWh",
+        "state_class": "total_increasing",
+    },
+    "grid_export_kWh": {
+        "models": ("Zappi",),
+        "component": "sensor",
+        "name": "Grid export energy",
+        "device_class": "energy",
+        "unit_of_measurement": "kWh",
+        "state_class": "total_increasing",
+    },
+    "house_kWh": {
+        "models": ("Zappi",),
+        "component": "sensor",
+        "name": "House energy",
+        "device_class": "energy",
+        "unit_of_measurement": "kWh",
+        "state_class": "total_increasing",
+    },
     "grid_pwr": {
         "component": "sensor",
         "name": "Grid power",
@@ -151,6 +185,27 @@ ENTITIES = {
         "icon": "mdi:stop-circle-outline",
     },
 }
+
+
+# Per-CT readings from the Zappi's 0x33 frames (CT1 is its internal EV CT)
+for _n in (2, 3, 4):
+    ENTITIES[f"ct{_n}_pwr_w"] = {
+        "models": ("Zappi",),
+        "component": "sensor",
+        "name": f"CT{_n} power",
+        "device_class": "power",
+        "unit_of_measurement": "W",
+        "state_class": "measurement",
+    }
+    ENTITIES[f"ct{_n}_current_a"] = {
+        "models": ("Zappi",),
+        "component": "sensor",
+        "name": f"CT{_n} current",
+        "device_class": "current",
+        "unit_of_measurement": "A",
+        "state_class": "measurement",
+        "entity_category": "diagnostic",
+    }
 
 
 def _applies(spec, model):

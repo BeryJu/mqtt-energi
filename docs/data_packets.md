@@ -48,6 +48,8 @@ Various Types of packets have been observed so far.
 |     0x2D    |          69         | ??                              |            12           |                              |
 |     0x22    |          58         | CT Readings?                    |            2            |                              |
 |     0x2A    |          66         | Zappi CT readings               |            1            | Zappi only                   |
+|     0x33    |          75         | Zappi per-CT readings           |            5            | Zappi only                   |
+|     0x3E    |          86         | Zappi per-minute history record |            2            | Zappi only, replays history  |
 |     0x27    |          63         | Unknown                         |            4            |                              |
 |     0x36    |          78         | Per-minute history record       |            2            | replays ~a week of records   |
 |     0x37    |          79         | Unknown                         |            tbc          |                              |
@@ -134,9 +136,24 @@ Sent by a Zappi about once a second: the CT readings it sends the Eddi over the 
 |      0x34     |       4      |  uint32   | Zappi serial number | N/A |
 |      0x3B     |       4      |  uint32   | Zappi serial + 1 | N/A |
 
+### 0x33 - Zappi per-CT readings
+
+Sent by a Zappi about every 5 seconds. Serial at 0x1E as usual; from 0x30 one 8-byte block per external CT (CT2 to CT4 here; CT1, the Zappi's internal EV CT, is not included):
+
+| Offset in block | Size (Bytes) | Data Type | Description |
+|---|---|---|---|
+| 0 | 1 | uint8 | 0x08 |
+| 1 | 1 | uint8 | CT number in the high nibble (0x21 = CT2) |
+| 2 | 1 | uint8 | CT type, as in the "TY" column of the Zappi's CT screens: 0 none, 1 grid, 4 seen on a home battery / inverter |
+| 3 | 1 | uint8 | 0 |
+| 4 | 2 | int16 | Power (W). For the grid CT positive = import; matches `0x2A` within ~10 W |
+| 6 | 2 | uint16 | Current (/ 100 A). e.g. 4.31 A at 1033 W and 241 V |
+
+On a sunny day the type 4 CT supplied the house (keeping grid import near zero) until 17:41, then dropped from about 1 kW to 0 in one step, the way a battery reaching its floor does.
+
 ### 0x3E - Zappi per-minute history record (partial)
 
-Like the Eddi's `0x36`: starts with `5A 5A`, has 60 at 0x26 (seconds in the record), and the Zappi replays its stored records the same way (on first connect, records from six days earlier, one every 2 seconds). The date at 0x21-0x24 matches the Eddi's encoding; the minute is in the low 6 bits of 0x20 and the month in the low 4 bits of 0x23. Seen so far: 0x38/0x3A probably export/import (W), 0x3C/0x3E/0x40 voltage of phases 1-3 (/ 10), 0x42 frequency (/ 100), 0x44 unit temperature (/ 10, matches the Zappi's "Unit Temp"), serial at 0x52. Not decoded by the bridge yet.
+Like the Eddi's `0x36`: starts with `5A 5A`, has 60 at 0x26 (seconds in the record), and the Zappi replays its stored records the same way (on first connect, records from six days earlier, one every 2 seconds). The date at 0x21-0x24 matches the Eddi's encoding; the minute is in the low 6 bits of 0x20 and the month in the low 4 bits of 0x23. Fields (checked against the Eddi's `0x36` over 4,761 shared minutes and the live `0x33` readings): 0x38 grid export (W, matches the Eddi's 0x34 within 2 W), 0x3A grid import (W, matches the Eddi's 0x36), 0x3C/0x3E/0x40 voltage of phases 1-3 (/ 10), 0x42 frequency (/ 100), 0x44 unit temperature (/ 10, matches the Zappi's "Unit Temp"), 0x46 a second import reading (within a few W of 0x3A), 0x48 CT3 power (W, matches `0x33`), serial at 0x52. Not decoded by the bridge yet.
 
 ### 0x27 - Unknown
 
@@ -173,7 +190,7 @@ Values confirmed against the Eddi's readings screens on an Eddi V2.1.
 |      0x2A     |       2      |   int16   | Usually zero; another channel (generation?)             |                 |
 |      0x2C     |       2      |   int16   | Heater power from boost (W), one-minute average. 0 while diverting | N/A |
 |      0x2E     |       6      |   int16   | Usually zero; other channels?                           |                 |
-|      0x34     |       2      |   int16   | Very likely grid export (W), one-minute average: 4-64 W while the Eddi diverts to keep the grid near zero, 0 at night | N/A |
+|      0x34     |       2      |   int16   | Grid export (W), one-minute average: 4-64 W while the Eddi diverts to keep the grid near zero, 0 at night. Matches the Zappi's own history record within 2 W | N/A |
 |      0x36     |       2      |   int16   | Grid import (W), one-minute average. Import and export are averaged separately, so this never goes negative | N/A |
 |      0x38     |       2      |   int16   | Voltage                                                 | / 10            |
 |      0x3A     |       2      |   int16   | Frequency                                               | / 100           |
