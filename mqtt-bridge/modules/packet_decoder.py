@@ -39,7 +39,7 @@ def decode_packet(eth_pkt, debug):
         data = {
             "serial": serialno,
             "diverted_kWh": div_wh / 100,
-            "divert_pwr": divert_pwr,
+            "divert_pwr_w": divert_pwr,
             #'divert_cur':divert_cur,
             "heater1": heater1,
             "heater2": heater2,
@@ -68,7 +68,7 @@ def decode_packet(eth_pkt, debug):
                 "diverted_kWh": div_wh / 100,
                 #'gen_pwr':gen_pow,
                 #'grid_pwr':grid_pow,
-                "divert_pwr": div_pow,
+                "divert_pwr_w": div_pow,
             }
 
     elif packet_type == 0x22:  # CT Readings
@@ -86,7 +86,7 @@ def decode_packet(eth_pkt, debug):
             "serial": serialno,
             "gen_pwr": gen_pow,
             "grid_pwr": grid_pow,
-            "divert_pwr": div_pow,
+            "divert_pwr_w": div_pow,
         }
 
     elif packet_type == 0x27:  # Data ?

@@ -59,7 +59,7 @@ Transmitted Approx Every 24 seconds
 |      0x2C     |       2      |   int16   | Diverted kWh         |   / 100         |
 |      0x24     |       2      |   bool    | Status Bit?          |                 |
 |      0x26     |       2      |   int16   | Max Heater Power (*1)|                 |
-|      0x34     |       2      |   int16   | Divert Power         |   / 100         |
+|      0x34     |       2      |   int16   | Divert Power (W)     | N/A (matches the Eddi display) |
 |      0x36     |       2      |   int16   | Divert Current?      |   / 100         |
 |      0x2E.0   |       1      | bool      | Boosting             |  N/A            |
 |      0x2F.7   |       1      | bool      | Heater 1 Active      |  N/A            |

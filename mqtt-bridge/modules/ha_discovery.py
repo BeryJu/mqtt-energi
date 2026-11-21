@@ -39,8 +39,10 @@ ENTITIES = {
         "unit_of_measurement": "kWh",
         "state_class": "total_increasing",
     },
-    "divert_pwr": {
-        # Unit not yet confirmed against a known load (see packet_decoder.py).
+    "divert_pwr_w": {
+        # Published as divert_pwr before; keep its discovery id so the existing
+        # Home Assistant entity (and its history) carries over.
+        "id": "divert_pwr",
         "component": "sensor",
         "name": "Divert power",
         "device_class": "power",
@@ -101,7 +103,7 @@ class Discovery:
         self._lock = threading.RLock()
 
     def _config(self, serial, key, spec):
-        uid = f"myenergi_{serial}_{key}"
+        uid = f"myenergi_{serial}_{spec.get('id', key)}"
         cfg = {
             "name": spec["name"],
             "unique_id": uid,
@@ -135,9 +137,8 @@ class Discovery:
                 spec = ENTITIES.get(key)
                 if spec is None or key in done:
                     continue
-                topic = (
-                    f"{self.prefix}/{spec['component']}/myenergi_{serial}/{key}/config"
-                )
+                object_id = spec.get("id", key)
+                topic = f"{self.prefix}/{spec['component']}/myenergi_{serial}/{object_id}/config"
                 self.mqtt.publish(
                     topic,
                     json.dumps(self._config(serial, key, spec)),
